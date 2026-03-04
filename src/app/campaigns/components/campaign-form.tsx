@@ -83,9 +83,6 @@ const availableTokens = [
   "{{position}}",
 ];
 
-const DAILY_SEND_LIMIT = 5000;
-const HOURLY_SEND_LIMIT = 500;
-
 export function CampaignForm({ campaignId }: { campaignId?: string }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -505,7 +502,24 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
                     </div>
                   </div>
                 ) : (
-                  <div className="grid gap-2">
+                  <div className="grid gap-4">
+                    <div className="space-y-2 p-3 rounded-lg bg-muted/30 border">
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-muted-foreground">Recipients</span>
+                        <span className="font-bold">{selectedList?.contacts.length || 0}</span>
+                      </div>
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-muted-foreground">Sender Email</span>
+                        <span className="font-medium truncate max-w-[120px]">{sender.fromEmail || "Not Set"}</span>
+                      </div>
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-muted-foreground">Status</span>
+                        <span className={cn("font-bold uppercase", sender.isDomainVerified ? "text-green-600" : "text-red-600")}>
+                          {sender.isDomainVerified ? "Verified" : "Action Required"}
+                        </span>
+                      </div>
+                    </div>
+
                     <Button
                       type="button"
                       onClick={handleDispatch}
@@ -534,6 +548,33 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
                     </AlertDescription>
                   </Alert>
                 )}
+
+                <Separator />
+
+                <div className="space-y-3">
+                   <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm">Rate Limiting</Label>
+                      <p className="text-[10px] text-muted-foreground">Smooth dispatch</p>
+                    </div>
+                    <Switch 
+                      checked={form.watch("smartRateLimiting")} 
+                      onCheckedChange={(val) => form.setValue("smartRateLimiting", val)}
+                      disabled={isSending}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm">Safety Auto-Pause</Label>
+                      <p className="text-[10px] text-muted-foreground">Pause if bounce rate &gt; 5%</p>
+                    </div>
+                    <Switch 
+                      checked={form.watch("pauseOnBounceThreshold")} 
+                      onCheckedChange={(val) => form.setValue("pauseOnBounceThreshold", val)}
+                      disabled={isSending}
+                    />
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
