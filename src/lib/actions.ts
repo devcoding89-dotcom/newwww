@@ -1,3 +1,4 @@
+
 "use server";
 
 import { extractEmails } from "@/ai/flows/ai-email-extraction-flow";
@@ -43,9 +44,31 @@ export async function validateEmailAction(
     if (records && records.length > 0) {
       return { isValid: true, reason: "" };
     }
-    return { isValid: false, reason: "No MX records" };
+    return { isValid: false, reason: "No MX records found for domain" };
   } catch (error) {
-    return { isValid: false, reason: "Domain not found" };
+    return { isValid: false, reason: "Domain does not exist or has no mail server" };
+  }
+}
+
+// SMTP Testing Action
+export async function testSmtpConnectionAction(
+  config: SmtpConfig
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const transporter = nodemailer.createTransport({
+      host: config.host,
+      port: config.port,
+      secure: config.secure,
+      auth: {
+        user: config.user,
+        pass: config.pass,
+      },
+    });
+
+    await transporter.verify();
+    return { success: true, message: "SMTP connection verified successfully!" };
+  } catch (error: any) {
+    return { success: false, message: error.message || "Failed to connect to SMTP server." };
   }
 }
 
@@ -58,19 +81,20 @@ interface SendCampaignResult {
 }
 
 function personalize(template: string, contact: Contact): string {
-    let content = template;
-    const tokens = {
-        '{{firstName}}': contact.firstName,
-        '{{lastName}}': contact.lastName,
-        '{{email}}': contact.email,
-        '{{company}}': contact.company,
-        '{{position}}': contact.position,
-    };
+  let content = template;
+  const tokens: { [key: string]: string | undefined } = {
+    '{{firstName}}': contact.firstName,
+    '{{lastName}}': contact.lastName,
+    '{{email}}': contact.email,
+    '{{company}}': contact.company,
+    '{{position}}': contact.position,
+  };
 
-    for (const [key, value] of Object.entries(tokens)) {
-        content = content.replace(new RegExp(key, 'g'), value || '');
-    }
-    return content;
+  for (const [key, value] of Object.entries(tokens)) {
+    // Use a case-insensitive regex for flexibility with user input
+    content = content.replace(new RegExp(key, 'gi'), value || '');
+  }
+  return content;
 }
 
 export async function sendCampaignAction(
@@ -95,7 +119,9 @@ export async function sendCampaignAction(
     errors: [],
   };
 
+  // We process these sequentially to avoid overwhelming SMTP providers and to handle errors gracefully
   for (const contact of contacts) {
+    // Final pre-flight check
     const { isValid, reason } = await validateEmailAction(contact.email);
     if (!isValid) {
       results.failed++;
@@ -107,11 +133,12 @@ export async function sendCampaignAction(
       const personalizedSubject = personalize(campaign.subject, contact);
       const personalizedBody = personalize(campaign.body, contact);
 
+      // We send HTML as primary, fallback to text could be added if needed
       await transporter.sendMail({
         from: `"EmailCraft Studio" <${smtpConfig.user}>`,
         to: contact.email,
         subject: personalizedSubject,
-        html: personalizedBody,
+        html: `<div style="font-family: sans-serif; line-height: 1.6;">${personalizedBody.replace(/\n/g, '<br/>')}</div>`,
       });
       results.sent++;
     } catch (error: any) {

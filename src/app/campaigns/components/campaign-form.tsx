@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
@@ -17,7 +18,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -31,7 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useGlobalLoading } from "@/hooks/use-global-loading";
 import type { Campaign, ContactList, SmtpConfig } from "@/lib/types";
 import { draftCampaignContentAction, sendCampaignAction } from "@/lib/actions";
-import { Loader2, Wand2, Send, ChevronLeft, Info } from "lucide-react";
+import { Loader2, Wand2, Send, ChevronLeft, Info, CheckCircle2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -61,6 +62,7 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
   const [smtpConfig] = useLocalStorage<SmtpConfig | null>("smtp-config", null);
 
   const [isSending, setIsSending] = useState(false);
+  const [sendResult, setSendResult] = useState<{ sent: number; failed: number } | null>(null);
 
   const existingCampaign = campaignId
     ? campaigns.find((c) => c.id === campaignId)
@@ -81,7 +83,7 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
     FormData
   >(async (prevState, formData) => {
     setIsLoading(true);
-    const minWait = new Promise(resolve => setTimeout(resolve, 2500));
+    const minWait = new Promise(resolve => setTimeout(resolve, 2000));
     try {
       const [result] = await Promise.all([
         draftCampaignContentAction({
@@ -141,23 +143,31 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
     
     setIsSending(true);
     setIsLoading(true);
-    const minWait = new Promise(resolve => setTimeout(resolve, 2500));
+    setSendResult(null);
     
     try {
       const campaignData = { ...existingCampaign, ...values } as Campaign;
-      const [result] = await Promise.all([
-        sendCampaignAction(campaignData, contactList.contacts, smtpConfig),
-        minWait
-      ]);
-      toast({
-        title: "Campaign Dispatch Complete",
-        description: `${result.sent} sent, ${result.failed} failed.`,
-      });
-      if (result.errors.length > 0) {
-          console.error("Sending errors:", result.errors);
+      const result = await sendCampaignAction(campaignData, contactList.contacts, smtpConfig);
+      
+      setSendResult({ sent: result.sent, failed: result.failed });
+      
+      if (result.failed === 0) {
+        toast({
+          title: "Campaign Sent Successfully!",
+          description: `All ${result.sent} emails were delivered.`,
+        });
+      } else {
+        toast({
+          variant: result.sent > 0 ? "default" : "destructive",
+          title: "Campaign Dispatch Finished",
+          description: `${result.sent} sent, ${result.failed} failed. Check console for error details.`,
+        });
+        if (result.errors.length > 0) {
+            console.error("Campaign Dispatch Errors:", result.errors);
+        }
       }
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Failed to Send Campaign", description: e.message });
+      toast({ variant: "destructive", title: "Dispatch Failed", description: e.message });
     } finally {
       setIsSending(false);
       setIsLoading(false);
@@ -229,6 +239,9 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
                           {...field}
                         />
                       </FormControl>
+                      <FormDescription>
+                        You can use tokens like {"{{firstName}}"} in the subject too.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -264,34 +277,37 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
           <div className="space-y-8 lg:col-span-1">
             <Card>
               <CardHeader>
-                <CardTitle>Configuration</CardTitle>
+                <CardTitle>AI Tools</CardTitle>
+                <CardDescription>Use AI to polish your copy.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Button 
                   type="button" 
-                  variant="outline" 
+                  variant="secondary" 
                   className="w-full" 
                   disabled={isDrafting}
                   onClick={handleDraftWithAI}
                 >
                     <Wand2 className="mr-2 h-4 w-4"/>
-                    {isDrafting ? "Drafting with AI..." : "Draft with AI"}
+                    {isDrafting ? "AI is writing..." : "Draft Content with AI"}
                 </Button>
                 <Button type="submit" className="w-full">
-                  Save Campaign
+                  Save Changes
                 </Button>
                 <Alert>
                   <Info className="h-4 w-4" />
-                  <AlertTitle>Available Tokens</AlertTitle>
-                  <AlertDescription className="text-xs break-all">
-                    {availableTokens.join(", ")}
+                  <AlertTitle>Tokens</AlertTitle>
+                  <AlertDescription className="text-xs">
+                    {availableTokens.join(" ")}
                   </AlertDescription>
                 </Alert>
               </CardContent>
             </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle>Dispatch</CardTitle>
+                <CardDescription>Send this campaign to a list.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Controller
@@ -299,7 +315,7 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
                   name="contactListId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Contact List</FormLabel>
+                      <FormLabel>Recipient List</FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         value={field.value ?? ""}
@@ -307,13 +323,13 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select a list to send to" />
+                            <SelectValue placeholder="Select a list" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           {contactLists.map((list) => (
                             <SelectItem key={list.id} value={list.id}>
-                              {list.name} ({list.contacts.length} contacts)
+                              {list.name} ({list.contacts.length} recipients)
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -326,17 +342,40 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
                 <Button
                   type="button"
                   onClick={handleSendCampaign}
-                  className="w-full bg-primary hover:bg-primary/90"
+                  className="w-full h-12 text-lg font-bold shadow-lg"
                   disabled={!existingCampaign || isSending || !form.getValues().contactListId}
                 >
-                  <Send className="mr-2 h-4 w-4" />
-                  {isSending ? "Sending..." : "Send Campaign Now"}
+                  {isSending ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Dispatching...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="mr-2 h-5 w-5" />
+                      Send Campaign Now
+                    </>
+                  )}
                 </Button>
+
+                {sendResult && (
+                  <div className="mt-4 p-4 rounded-lg bg-muted flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm flex items-center gap-1"><CheckCircle2 className="h-4 w-4 text-green-500" /> Sent:</span>
+                      <span className="font-bold">{sendResult.sent}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm flex items-center gap-1"><AlertTriangle className="h-4 w-4 text-amber-500" /> Failed:</span>
+                      <span className="font-bold">{sendResult.failed}</span>
+                    </div>
+                  </div>
+                )}
+
                 {!existingCampaign && (
-                  <p className="text-xs text-muted-foreground text-center">Save the campaign to enable sending.</p>
+                  <p className="text-xs text-muted-foreground text-center italic">Save the campaign first to unlock sending.</p>
                 )}
                  {!smtpConfig?.host && (
-                  <p className="text-xs text-destructive text-center">SMTP not configured in settings.</p>
+                  <p className="text-xs text-destructive text-center font-medium">SMTP not configured in Settings.</p>
                 )}
               </CardContent>
             </Card>
