@@ -3,7 +3,7 @@
 
 import { useActionState, useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -40,28 +40,24 @@ import { draftCampaignContentAction, processBatchAction } from "@/lib/actions";
 import { 
   Loader2, 
   Wand2, 
-  Send, 
   ChevronLeft, 
   Info, 
-  CheckCircle2, 
   AlertTriangle, 
   Globe, 
-  Play, 
-  Calendar, 
   Zap, 
   ShieldCheck, 
   Layout, 
   Users, 
   Mail, 
   Clock, 
-  FileText,
   Save,
   Rocket
 } from "lucide-react";
 import Link from "next/link";
 import { useFirestore, useUser, useDoc } from "@/firebase";
-import { doc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, updateDoc, serverTimestamp, collection, addDoc } from "firebase/firestore";
 import { cn } from "@/lib/utils";
+import { Label } from "@/components/ui/label";
 
 const campaignSchema = z.object({
   name: z.string().min(1, "Campaign name is required"),
@@ -173,6 +169,7 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
 
     const data = {
       ...values,
+      id: id,
       status: (campaignData?.status as CampaignStatus) || "draft",
       sentCount: campaignData?.sentCount || 0,
       failedCount: campaignData?.failedCount || 0,
@@ -214,24 +211,36 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
     });
 
     const contacts = selectedList.contacts;
-    const batchSize = 50;
+    const batchSize = 100;
     let totalSent = 0;
     let totalFailed = 0;
 
     for (let i = 0; i < contacts.length; i += batchSize) {
       const batch = contacts.slice(i, i + batchSize);
+      
+      // Call Server Action to process batch via SendGrid
       const result = await processBatchAction(campaignData as Campaign, batch, sender);
       
       totalSent += result.sent;
       totalFailed += result.failed;
 
+      // Update progress in Firestore (Client-side SDK)
       updateDoc(campaignRef, {
         sentCount: totalSent,
         failedCount: totalFailed,
         updatedAt: serverTimestamp(),
       });
+
+      // Write individual delivery logs
+      const logsRef = collection(db, "users", user.uid, "campaigns", campaignData.id, "logs");
+      for (const log of result.logs) {
+        addDoc(logsRef, log);
+      }
       
-      await new Promise(r => setTimeout(r, 1000));
+      // Delay between batches to respect rate limits
+      if (i + batchSize < contacts.length) {
+        await new Promise(r => setTimeout(r, 1500));
+      }
     }
 
     updateDoc(campaignRef, {
@@ -516,7 +525,7 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
               <CardContent className="space-y-4">
                  <div className="grid gap-2">
                   <Button variant="outline" className="justify-start text-left font-normal" type="button">
-                    <Calendar className="mr-2 h-4 w-4" />
+                    <Clock className="mr-2 h-4 w-4" />
                     Send Immediately
                   </Button>
                   <Button variant="ghost" className="justify-start text-left font-normal text-muted-foreground" type="button">
@@ -628,7 +637,7 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
                         SUCCESS: {campaignData.sentCount}
                       </div>
                       <div className="p-2 bg-red-50 text-red-700 rounded border border-red-100">
-                        BOUNCED: {campaignData.failedCount}
+                        FAILED: {campaignData.failedCount}
                       </div>
                     </div>
                   </div>
@@ -674,8 +683,4 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
       </Form>
     </div>
   );
-}
-
-function Label({ children, className }: { children: React.ReactNode, className?: string }) {
-  return <label className={cn("text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70", className)}>{children}</label>;
 }

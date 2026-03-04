@@ -100,6 +100,18 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "subject", "body", "status", "createdAt"]
+    },
+    "EmailLog": {
+      "title": "Email Delivery Log",
+      "description": "A record of an individual email delivery attempt.",
+      "type": "object",
+      "properties": {
+        "recipientEmail": { "type": "string" },
+        "status": { "type": "string", "enum": ["delivered", "bounced", "failed"] },
+        "error": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["recipientEmail", "status", "timestamp"]
     }
   },
   "auth": {
@@ -125,7 +137,13 @@
       "schema": {
         "$ref": "#/entities/Campaign"
       },
-      "description": "Stores a user's email campaigns and their real-time dispatch status."
+      "description": "Stores a user's email campaigns."
+    },
+    "/users/{userId}/campaigns/{campaignId}/logs/{logId}": {
+      "schema": {
+        "$ref": "#/entities/EmailLog"
+      },
+      "description": "Stores individual delivery logs for a campaign."
     }
   }
 }
