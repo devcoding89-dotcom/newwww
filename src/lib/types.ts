@@ -14,12 +14,19 @@ export interface ContactList {
   contacts: Contact[];
 }
 
-export interface SmtpConfig {
-  host: string;
-  port: number;
-  secure: boolean;
-  user: string;
-  pass: string;
+export interface SenderSettings {
+  fromName: string;
+  fromEmail: string;
+  domain: string;
+  isDomainVerified: boolean;
+  isSenderVerified: boolean;
+}
+
+export interface ComplianceSettings {
+  handleBounces: boolean;
+  handleSpam: boolean;
+  bounceRate: number;
+  complaintRate: number;
 }
 
 export interface Campaign {

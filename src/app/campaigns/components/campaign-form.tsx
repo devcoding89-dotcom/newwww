@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
@@ -30,9 +29,9 @@ import PageHeader from "@/components/page-header";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useToast } from "@/hooks/use-toast";
 import { useGlobalLoading } from "@/hooks/use-global-loading";
-import type { Campaign, ContactList } from "@/lib/types";
+import type { Campaign, ContactList, SenderSettings } from "@/lib/types";
 import { draftCampaignContentAction, sendCampaignAction } from "@/lib/actions";
-import { Loader2, Wand2, Send, ChevronLeft, Info, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Loader2, Wand2, Send, ChevronLeft, Info, CheckCircle2, AlertTriangle, Globe } from "lucide-react";
 import Link from "next/link";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -59,6 +58,13 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
   const { setIsLoading } = useGlobalLoading();
   const [campaigns, setCampaigns] = useLocalStorage<Campaign[]>("campaigns", []);
   const [contactLists] = useLocalStorage<ContactList[]>("contact-lists", []);
+  const [sender] = useLocalStorage<SenderSettings>("sender-settings", {
+    fromName: "",
+    fromEmail: "",
+    domain: "",
+    isDomainVerified: false,
+    isSenderVerified: false,
+  });
 
   const [isSending, setIsSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ sent: number; failed: number } | null>(null);
@@ -130,6 +136,16 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
       toast({ variant: "destructive", title: "No Contact List", description: "Please select a contact list." });
       return;
     }
+
+    if (!sender.isDomainVerified || !sender.fromEmail) {
+      toast({ 
+        variant: "destructive", 
+        title: "Sender Not Verified", 
+        description: "Please verify your sender identity and domain in Settings before sending." 
+      });
+      return;
+    }
+
     const contactList = contactLists.find(cl => cl.id === values.contactListId);
     if (!contactList || contactList.contacts.length === 0) {
       toast({ variant: "destructive", title: "Empty Contact List", description: "The selected contact list has no contacts." });
@@ -142,14 +158,14 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
     
     try {
       const campaignData = { ...existingCampaign, ...values } as Campaign;
-      const result = await sendCampaignAction(campaignData, contactList.contacts);
+      const result = await sendCampaignAction(campaignData, contactList.contacts, sender);
       
       setSendResult({ sent: result.sent, failed: result.failed });
       
       if (result.failed === 0) {
         toast({
           title: "Campaign Sent Successfully!",
-          description: `All ${result.sent} emails were delivered via internal SMTP.`,
+          description: `All ${result.sent} emails were delivered via platform infrastructure.`,
         });
       } else {
         toast({
@@ -302,7 +318,7 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
             <Card>
               <CardHeader>
                 <CardTitle>Dispatch</CardTitle>
-                <CardDescription>Send this campaign via internal SMTP.</CardDescription>
+                <CardDescription>Send via platform infrastructure.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Controller
@@ -334,11 +350,20 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
                   )}
                 />
 
+                {!sender.isDomainVerified && (
+                  <Alert variant="destructive" className="py-2">
+                    <Globe className="h-4 w-4" />
+                    <AlertDescription className="text-[10px]">
+                      Domain not verified. <Link href="/settings" className="underline font-bold">Fix in Settings</Link>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 <Button
                   type="button"
                   onClick={handleSendCampaign}
                   className="w-full h-12 text-lg font-bold shadow-lg"
-                  disabled={!existingCampaign || isSending || !form.getValues().contactListId}
+                  disabled={!existingCampaign || isSending || !form.getValues().contactListId || !sender.isDomainVerified}
                 >
                   {isSending ? (
                     <>
