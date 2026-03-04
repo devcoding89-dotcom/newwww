@@ -3,7 +3,7 @@
 import { Sidebar } from '@/components/sidebar';
 import React, { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { PanelLeft } from 'lucide-react';
 import { MobileNav } from './mobile-nav';
@@ -37,6 +37,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="sm:max-w-xs">
+              <SheetHeader className="sr-only">
+                <SheetTitle>Navigation Menu</SheetTitle>
+              </SheetHeader>
               <MobileNav />
             </SheetContent>
           </Sheet>
