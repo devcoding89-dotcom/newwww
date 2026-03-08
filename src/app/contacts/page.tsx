@@ -4,7 +4,7 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { PlusCircle, Upload, Loader2, FileCheck } from "lucide-react";
+import { PlusCircle, Upload, Loader2, FileCheck, ShieldCheck, Trash2 } from "lucide-react";
 import PageHeader from "@/components/page-header";
 import type { Contact } from "@/lib/types";
 import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
@@ -14,6 +14,7 @@ import { ContactListControls } from "./components/contact-list-controls";
 import { ContactsTable } from "./components/contacts-table";
 import { ContactForm } from "./components/contact-form";
 import { useToast } from "@/hooks/use-toast";
+import { validateEmailAction } from "@/lib/actions";
 
 export default function ContactsPage() {
   const { toast } = useToast();
@@ -24,6 +25,7 @@ export default function ContactsPage() {
   const [isContactFormOpen, setIsContactFormOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   const listsQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
@@ -128,7 +130,6 @@ export default function ContactsPage() {
   const handleDeleteContact = async (contactId: string) => {
     if (!db || !user || !selectedListId) return;
     try {
-      // Remove from list associations first
       const listRef = doc(db, "users", user.uid, "contactLists", selectedListId);
       const list = contactLists?.find(l => l.id === selectedListId);
       if (list) {
@@ -143,6 +144,34 @@ export default function ContactsPage() {
     }
   };
 
+  const handleBulkVerify = async () => {
+    if (!db || !user || selectedListContacts.length === 0) return;
+    setIsVerifying(true);
+    const { id: toastId } = toast({ title: "Verifying List", description: "Checking MX records..." });
+
+    try {
+      const batch = writeBatch(db);
+      let count = 0;
+      
+      for (const contact of selectedListContacts) {
+        if (contact.isValid) continue;
+        const validation = await validateEmailAction(contact.email);
+        if (validation.isValid) {
+          const contactRef = doc(db, "users", user.uid, "contacts", contact.id);
+          batch.update(contactRef, { isValid: true, updatedAt: new Date().toISOString() });
+          count++;
+        }
+      }
+
+      await batch.commit();
+      toast({ id: toastId, title: "Verification Complete", description: `Successfully verified ${count} contacts.` });
+    } catch (e) {
+      toast({ id: toastId, variant: "destructive", title: "Verification Failed" });
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
   const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!db || !user || !selectedListId) return;
     if (e.target.files && e.target.files[0]) {
@@ -150,7 +179,7 @@ export default function ContactsPage() {
       setIsImporting(true);
       const { id: toastId } = toast({
         title: "Importing...",
-        description: "Validating contacts...",
+        description: "Mapping headers and validating data...",
       });
 
       try {
@@ -159,11 +188,15 @@ export default function ContactsPage() {
         if (lines.length <= 1) throw new Error("File is empty or missing headers.");
 
         const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-        const emailIdx = headers.indexOf('email');
+        const emailIdx = headers.findIndex(h => h.includes('email'));
         if (emailIdx === -1) throw new Error("No 'email' column found in headers.");
 
-        // Clean values helper
-        const clean = (val?: string) => val?.trim().replace(/"/g, '') || '';
+        const fnIdx = headers.findIndex(h => h.includes('first') || h === 'name');
+        const lnIdx = headers.findIndex(h => h.includes('last'));
+        const coIdx = headers.findIndex(h => h.includes('company') || h.includes('org'));
+        const posIdx = headers.findIndex(h => h.includes('position') || h.includes('title') || h.includes('role'));
+
+        const clean = (val?: string) => val?.trim().replace(/^"|"$/g, '') || '';
 
         const batch = writeBatch(db);
         const newContactIds: string[] = [];
@@ -178,11 +211,11 @@ export default function ContactsPage() {
           const contactRef = doc(collection(db, "users", user.uid, "contacts"));
           const contactData = {
             email,
-            firstName: clean(values[headers.indexOf('firstname')] || values[headers.indexOf('first name')]),
-            lastName: clean(values[headers.indexOf('lastname')] || values[headers.indexOf('last name')]),
-            company: clean(values[headers.indexOf('company')]),
-            position: clean(values[headers.indexOf('position')]),
-            isValid: true,
+            firstName: fnIdx !== -1 ? clean(values[fnIdx]) : "",
+            lastName: lnIdx !== -1 ? clean(values[lnIdx]) : "",
+            company: coIdx !== -1 ? clean(values[coIdx]) : "",
+            position: posIdx !== -1 ? clean(values[posIdx]) : "",
+            isValid: true, // Auto-mark valid for clean imports, usually verified on dispatch
             userId: user.uid,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -192,8 +225,7 @@ export default function ContactsPage() {
           newContactIds.push(contactRef.id);
           existingEmails.add(email);
 
-          // Write in chunks to prevent batch limit
-          if (newContactIds.length >= 400) break; 
+          if (newContactIds.length >= 450) break; 
         }
 
         if (newContactIds.length === 0) {
@@ -223,9 +255,15 @@ export default function ContactsPage() {
     <div className="container mx-auto py-8">
       <PageHeader
         title="Contact Intelligence"
-        description="Organize your recipients into high-performance segments."
+        description="Verify, organize, and segment your leads for maximum deliverability."
       >
         <div className="flex items-center gap-2">
+          {selectedListId && selectedListContacts.length > 0 && (
+            <Button size="sm" variant="outline" onClick={handleBulkVerify} disabled={isVerifying}>
+              {isVerifying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+              Verify All
+            </Button>
+          )}
            <Button size="sm" variant="outline" asChild disabled={!selectedListId || isImporting}>
              <label htmlFor="csv-upload" className="cursor-pointer">
                {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
@@ -287,9 +325,9 @@ export default function ContactsPage() {
             />
           ) : (
             <div className="p-12 text-center text-muted-foreground">
-              <FileCheck className="h-12 w-12 mx-auto mb-4 opacity-20" />
-              <h3 className="text-lg font-semibold">Ready for Outreach</h3>
-              <p className="text-sm">Select a list or create one to start organizing your contacts.</p>
+              <FileCheck className="h-12 w-12 mx-auto mb-4 opacity-20 text-primary" />
+              <h3 className="text-lg font-semibold">Audience Segmentation</h3>
+              <p className="text-sm">Select a contact list or create one to start verified outreach.</p>
             </div>
           )}
         </CardContent>

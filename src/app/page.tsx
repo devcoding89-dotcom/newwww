@@ -3,7 +3,7 @@
 
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Users, Mail, Rocket, AlertTriangle, CheckCircle2, BarChart3, History, Loader2, Target } from "lucide-react";
+import { Users, Mail, Rocket, AlertTriangle, CheckCircle2, BarChart3, History, Loader2, Target, ShieldCheck } from "lucide-react";
 import PageHeader from "@/components/page-header";
 import {
   ChartContainer,
@@ -13,12 +13,13 @@ import {
 import { Bar, BarChart, XAxis, YAxis, Cell } from "recharts";
 import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query } from "firebase/firestore";
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
   const db = useFirestore();
 
-  // Firestore Queries - properly memoized for useCollection
   const parsesQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
     return query(collection(db, "users", user.uid, "parses"));
@@ -49,12 +50,12 @@ export default function DashboardPage() {
 
   const chartData = useMemo(() => [
     { name: "Verified", value: stats.valid, fill: "hsl(var(--primary))" },
-    { name: "Unverified", value: stats.total - stats.valid - stats.invalid, fill: "hsl(var(--muted))" },
-    { name: "Invalid", value: stats.invalid, fill: "hsl(var(--destructive))" },
+    { name: "Pending", value: stats.total - stats.valid - stats.invalid, fill: "hsl(var(--muted))" },
+    { name: "Flagged", value: stats.invalid, fill: "hsl(var(--destructive))" },
   ], [stats]);
 
   const chartConfig = {
-    value: { label: "Contacts" },
+    value: { label: "Recipients" },
   };
 
   if (isUserLoading || parsesLoading || campaignsLoading || contactsLoading) {
@@ -68,44 +69,44 @@ export default function DashboardPage() {
   return (
     <div className="container mx-auto py-8">
       <PageHeader
-        title="Platform Insights"
-        description={`Welcome back, ${user?.displayName || 'User'}. Here's your campaign performance overview.`}
+        title="Studio Insights"
+        description={`Welcome back, ${user?.displayName || 'User'}. Your sender reputation is currently stable.`}
       />
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Cloud Contacts</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Audience</CardTitle>
             <Users className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-            <p className="text-xs text-muted-foreground">Securely synced profiles</p>
+            <div className="text-2xl font-bold">{stats.total.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">Unique verified leads</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">AI Extractions</CardTitle>
+            <CardTitle className="text-sm font-medium">AI Intelligence</CardTitle>
             <Target className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{parses?.length || 0}</div>
-            <p className="text-xs text-muted-foreground">Intelligent parses performed</p>
+            <p className="text-xs text-muted-foreground">Successful extractions</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Campaigns</CardTitle>
+            <CardTitle className="text-sm font-medium">Active Outreach</CardTitle>
             <Rocket className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{campaigns?.length || 0}</div>
-            <p className="text-xs text-muted-foreground">Active outreach projects</p>
+            <p className="text-xs text-muted-foreground">Managed campaigns</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Delivery Health</CardTitle>
+            <CardTitle className="text-sm font-medium">Delivery Trust</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
@@ -124,7 +125,7 @@ export default function DashboardPage() {
               <BarChart3 className="h-5 w-5 text-primary" />
               <CardTitle>Audience Verification Status</CardTitle>
             </div>
-            <CardDescription>Breakdown of data quality across your contact database.</CardDescription>
+            <CardDescription>Real-time breakdown of your database health.</CardDescription>
           </CardHeader>
           <CardContent className="h-[350px]">
             <ChartContainer config={chartConfig}>
@@ -156,19 +157,33 @@ export default function DashboardPage() {
         <Card className="col-span-3">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <History className="h-5 w-5 text-primary" />
-              <CardTitle>Growth Roadmap</CardTitle>
+              <ShieldCheck className="h-5 w-5 text-primary" />
+              <CardTitle>Growth Strategy</CardTitle>
             </div>
             <CardDescription>Optimization steps for your studio.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+             {stats.total > 0 && stats.valid / stats.total < 0.9 && (
+              <div className="flex items-start gap-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <div className="mt-1 rounded-full bg-amber-100 p-2 text-amber-600">
+                  <AlertTriangle className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-amber-900">Cleaning Recommended</p>
+                  <p className="mt-1 text-xs text-amber-700">You have {stats.total - stats.valid} unverified contacts. Clean your list in the <Link href="/contacts" className="font-bold underline">Contacts Intelligence</Link> panel to avoid bounces.</p>
+                </div>
+              </div>
+            )}
             <div className="flex items-start gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/50">
               <div className="mt-1 rounded-full bg-primary/10 p-2 text-primary">
                 <Mail className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-sm font-semibold">Launch A/B Test</p>
-                <p className="mt-1 text-xs text-muted-foreground">Create two campaigns with different subject lines to optimize open rates.</p>
+                <p className="text-sm font-semibold">Ready for Launch</p>
+                <p className="mt-1 text-xs text-muted-foreground">You have {stats.valid} verified leads ready for immediate high-performance outreach.</p>
+                <Button size="sm" variant="link" asChild className="p-0 h-auto text-xs">
+                  <Link href="/campaigns/new">Draft Campaign</Link>
+                </Button>
               </div>
             </div>
             <div className="flex items-start gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/50">
@@ -176,17 +191,8 @@ export default function DashboardPage() {
                 <Users className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-sm font-semibold">Verify Domain</p>
-                <p className="mt-1 text-xs text-muted-foreground">Head to settings to authenticate your business domain for 99.9% inbox placement.</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/50">
-              <div className="mt-1 rounded-full bg-destructive/10 p-2 text-destructive">
-                <AlertTriangle className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold">Clean Inactive Data</p>
-                <p className="mt-1 text-xs text-muted-foreground">Your invalid email count is {stats.invalid}. We recommend removing these to protect your IP reputation.</p>
+                <p className="text-sm font-semibold">Scale Audience</p>
+                <p className="mt-1 text-xs text-muted-foreground">Use the <Link href="/extract" className="font-bold underline">Extract tool</Link> to find more leads from your existing data sources.</p>
               </div>
             </div>
           </CardContent>
