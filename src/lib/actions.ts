@@ -21,7 +21,7 @@ import sgMail from "@sendgrid/mail";
  */
 
 // CONFIGURE YOUR SENDGRID API KEY HERE
-const SENDGRID_API_KEY = "YOUR_SENDGRID_API_KEY"; // Replace with your actual key
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || "YOUR_SENDGRID_API_KEY"; 
 sgMail.setApiKey(SENDGRID_API_KEY);
 
 const PUBLIC_DOMAINS = [
@@ -83,6 +83,7 @@ function personalize(template: string, contact: Contact): string {
   const tokens: { [key: string]: string | undefined } = {
     '{{firstName}}': contact.firstName,
     '{{lastName}}': contact.lastName,
+    '{{name}}': `${contact.firstName} ${contact.lastName}`.trim(),
     '{{email}}': contact.email,
     '{{company}}': contact.company,
     '{{position}}': contact.position,
@@ -104,19 +105,6 @@ export async function processBatchAction(
   let sent = 0;
   let failed = 0;
 
-  // Prepare messages with personalization
-  const personalizations = batchContacts.map(contact => ({
-    to: contact.email,
-    substitutions: {
-      firstName: contact.firstName || '',
-      lastName: contact.lastName || '',
-      company: contact.company || '',
-      position: contact.position || '',
-    }
-  }));
-
-  // Note: For real SendGrid, you'd use their dynamic templates or substitutions feature
-  // Here we simulate the batch call
   for (const contact of batchContacts) {
     const personalizedBody = personalize(campaign.body, contact);
     const personalizedSubject = personalize(campaign.subject, contact);
@@ -133,8 +121,8 @@ export async function processBatchAction(
 
     try {
       if (SENDGRID_API_KEY === "YOUR_SENDGRID_API_KEY") {
-        // Simulate success if key is not yet provided
-        await new Promise(r => setTimeout(r, 50));
+        // PROTOTYPE MODE: Simulate API latency and success
+        await new Promise(r => setTimeout(r, 100));
       } else {
         await sgMail.send(msg);
       }

@@ -4,7 +4,7 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { PlusCircle, Upload, Loader2 } from "lucide-react";
+import { PlusCircle, Upload, Loader2, FileCheck } from "lucide-react";
 import PageHeader from "@/components/page-header";
 import type { Contact } from "@/lib/types";
 import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
@@ -23,6 +23,7 @@ export default function ContactsPage() {
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [isContactFormOpen, setIsContactFormOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
 
   const listsQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
@@ -146,6 +147,7 @@ export default function ContactsPage() {
     if (!db || !user || !selectedListId) return;
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      setIsImporting(true);
       const { id: toastId } = toast({
         title: "Importing...",
         description: "Validating contacts...",
@@ -154,51 +156,66 @@ export default function ContactsPage() {
       try {
         const text = await file.text();
         const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
-        if (lines.length <= 1) throw new Error("File is empty.");
+        if (lines.length <= 1) throw new Error("File is empty or missing headers.");
 
         const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
         const emailIdx = headers.indexOf('email');
-        if (emailIdx === -1) throw new Error("No 'email' column found.");
+        if (emailIdx === -1) throw new Error("No 'email' column found in headers.");
+
+        // Clean values helper
+        const clean = (val?: string) => val?.trim().replace(/"/g, '') || '';
 
         const batch = writeBatch(db);
         const newContactIds: string[] = [];
+        const existingEmails = new Set(selectedListContacts.map(c => c.email.toLowerCase()));
 
         for (const line of lines.slice(1)) {
-          const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
-          const email = values[emailIdx];
-          if (!email) continue;
+          const values = line.split(',').map(v => v.trim());
+          const email = clean(values[emailIdx]).toLowerCase();
+          
+          if (!email || !email.includes('@') || existingEmails.has(email)) continue;
 
           const contactRef = doc(collection(db, "users", user.uid, "contacts"));
-          batch.set(contactRef, {
+          const contactData = {
             email,
-            firstName: values[headers.indexOf('firstname')] || values[headers.indexOf('first name')] || '',
-            lastName: values[headers.indexOf('lastname')] || values[headers.indexOf('last name')] || '',
-            company: values[headers.indexOf('company')] || '',
-            position: values[headers.indexOf('position')] || '',
+            firstName: clean(values[headers.indexOf('firstname')] || values[headers.indexOf('first name')]),
+            lastName: clean(values[headers.indexOf('lastname')] || values[headers.indexOf('last name')]),
+            company: clean(values[headers.indexOf('company')]),
+            position: clean(values[headers.indexOf('position')]),
             isValid: true,
             userId: user.uid,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-          });
+          };
+
+          batch.set(contactRef, contactData);
           newContactIds.push(contactRef.id);
+          existingEmails.add(email);
+
+          // Write in chunks to prevent batch limit
+          if (newContactIds.length >= 400) break; 
         }
 
-        await batch.commit();
-        
-        const listRef = doc(db, "users", user.uid, "contactLists", selectedListId);
-        const list = contactLists?.find(l => l.id === selectedListId);
-        if (list) {
-          await updateDoc(listRef, {
-            contactIds: [...(list.contactIds || []), ...newContactIds],
-            updatedAt: new Date().toISOString(),
-          });
+        if (newContactIds.length === 0) {
+          toast({ id: toastId, variant: "destructive", title: "No New Contacts", description: "All contacts in file are already in this list." });
+        } else {
+          await batch.commit();
+          const listRef = doc(db, "users", user.uid, "contactLists", selectedListId);
+          const list = contactLists?.find(l => l.id === selectedListId);
+          if (list) {
+            await updateDoc(listRef, {
+              contactIds: [...(list.contactIds || []), ...newContactIds],
+              updatedAt: new Date().toISOString(),
+            });
+          }
+          toast({ id: toastId, title: "Import Successful", description: `Added ${newContactIds.length} new contacts.` });
         }
-
-        toast({ id: toastId, title: "Import Complete", description: `Added ${newContactIds.length} contacts.` });
       } catch (error: any) {
         toast({ id: toastId, variant: "destructive", title: "Import Failed", description: error.message });
+      } finally {
+        setIsImporting(false);
+        e.target.value = "";
       }
-      e.target.value = "";
     }
   };
 
@@ -209,11 +226,11 @@ export default function ContactsPage() {
         description="Organize your recipients into high-performance segments."
       >
         <div className="flex items-center gap-2">
-           <Button size="sm" variant="outline" asChild disabled={!selectedListId}>
+           <Button size="sm" variant="outline" asChild disabled={!selectedListId || isImporting}>
              <label htmlFor="csv-upload" className="cursor-pointer">
-               <Upload className="mr-2 h-4 w-4" />
+               {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
                Import CSV
-               <input id="csv-upload" type="file" accept=".csv" className="sr-only" onChange={onFileChange} />
+               <input id="csv-upload" type="file" accept=".csv" className="sr-only" onChange={onFileChange} disabled={isImporting} />
              </label>
            </Button>
           <Button
@@ -222,7 +239,7 @@ export default function ContactsPage() {
               setEditingContact(null);
               setIsContactFormOpen(true);
             }}
-            disabled={!selectedListId}
+            disabled={!selectedListId || isImporting}
           >
             <PlusCircle className="mr-2 h-4 w-4" />
             Add Contact
@@ -270,9 +287,9 @@ export default function ContactsPage() {
             />
           ) : (
             <div className="p-12 text-center text-muted-foreground">
-              <PlusCircle className="h-12 w-12 mx-auto mb-4 opacity-20" />
-              <h3 className="text-lg font-semibold">No List Selected</h3>
-              <p className="text-sm">Select an existing list or create a new one to manage contacts.</p>
+              <FileCheck className="h-12 w-12 mx-auto mb-4 opacity-20" />
+              <h3 className="text-lg font-semibold">Ready for Outreach</h3>
+              <p className="text-sm">Select a list or create one to start organizing your contacts.</p>
             </div>
           )}
         </CardContent>
