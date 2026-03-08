@@ -66,19 +66,29 @@ export function LoginForm() {
 
   async function onSubmit(values: LoginFormData) {
     if (!auth) {
-        toast({ variant: "destructive", title: "Auth service not available" });
-        return;
+      toast({ variant: "destructive", title: "Auth service not available" });
+      return;
     }
     setIsLoading(true);
     try {
       await signIn(auth, values);
       router.push("/");
     } catch (error: any) {
-      console.error(error);
+      // Handle specific Firebase error codes without triggering the dev overlay via console.error
+      let description = "Invalid email or password. Please try again.";
+      
+      if (error.code === 'auth/invalid-credential') {
+        description = "The email or password you entered is incorrect.";
+      } else if (error.code === 'auth/too-many-requests') {
+        description = "Too many failed attempts. Please try again later.";
+      } else if (error.code === 'auth/user-disabled') {
+        description = "This account has been disabled.";
+      }
+
       toast({
         variant: "destructive",
         title: "Login Failed",
-        description: "Invalid email or password. Please try again.",
+        description,
       });
     } finally {
       setIsLoading(false);
@@ -87,22 +97,21 @@ export function LoginForm() {
 
   async function onGoogleSignIn() {
     if (!auth) {
-        toast({ variant: "destructive", title: "Auth service not available" });
-        return;
+      toast({ variant: "destructive", title: "Auth service not available" });
+      return;
     }
     setIsGoogleLoading(true);
     try {
-        await signInWithGoogle(auth);
-        router.push("/");
+      await signInWithGoogle(auth);
+      router.push("/");
     } catch (error: any) {
-        console.error(error);
-        toast({
-            variant: "destructive",
-            title: "Google Sign-In Failed",
-            description: error.message || "An unexpected error occurred."
-        });
+      toast({
+        variant: "destructive",
+        title: "Google Sign-In Failed",
+        description: error.message || "An unexpected error occurred.",
+      });
     } finally {
-        setIsGoogleLoading(false);
+      setIsGoogleLoading(false);
     }
   }
 
@@ -112,72 +121,83 @@ export function LoginForm() {
       description="Enter your credentials to access your account"
       footerContent={
         <div className="text-center text-sm text-muted-foreground w-full">
-            Don&apos;t have an account?{" "}
-            <Link href="/signup" className="font-semibold text-primary underline-offset-4 hover:underline">
-                Sign Up
-            </Link>
+          Don&apos;t have an account?{" "}
+          <Link
+            href="/signup"
+            className="font-semibold text-primary underline-offset-4 hover:underline"
+          >
+            Sign Up
+          </Link>
         </div>
       }
     >
-        <div className="grid gap-4">
-            <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                        <Input type="email" placeholder="name@example.com" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                    <FormItem>
-                        <div className="flex items-center">
-                            <FormLabel>Password</FormLabel>
-                            <Link href="/forgot-password" className="ml-auto inline-block text-sm underline">
-                                Forgot your password?
-                            </Link>
-                        </div>
-                        <FormControl>
-                        <Input type="password" placeholder="••••••••" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Log In
-                </Button>
-                </form>
-            </Form>
-            <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">
-                        Or continue with
-                    </span>
-                </div>
-            </div>
-            <Button variant="outline" type="button" onClick={onGoogleSignIn} disabled={isGoogleLoading}>
-                {isGoogleLoading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                    <GoogleIcon className="mr-2 h-4 w-4" />
-                )}{" "}
-                Google
+      <div className="grid gap-4">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input type="email" placeholder="name@example.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <div className="flex items-center">
+                    <FormLabel>Password</FormLabel>
+                    <Link
+                      href="/forgot-password"
+                      className="ml-auto inline-block text-sm underline"
+                    >
+                      Forgot your password?
+                    </Link>
+                  </div>
+                  <FormControl>
+                    <Input type="password" placeholder="••••••••" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Log In
             </Button>
+          </form>
+        </Form>
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">
+              Or continue with
+            </span>
+          </div>
         </div>
+        <Button
+          variant="outline"
+          type="button"
+          onClick={onGoogleSignIn}
+          disabled={isGoogleLoading}
+        >
+          {isGoogleLoading ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <GoogleIcon className="mr-2 h-4 w-4" />
+          )}{" "}
+          Google
+        </Button>
+      </div>
     </AuthCard>
   );
 }

@@ -42,19 +42,23 @@ export function SignupForm() {
 
   async function onSubmit(values: SignupFormData) {
     if (!auth) {
-        toast({ variant: "destructive", title: "Auth service not available" });
-        return;
+      toast({ variant: "destructive", title: "Auth service not available" });
+      return;
     }
     setIsLoading(true);
     try {
       await signUp(auth, values);
       setIsSubmitted(true);
     } catch (error: any) {
-      console.error(error);
       let description = "An unexpected error occurred. Please try again.";
       if (error.code === 'auth/email-already-in-use') {
         description = "This email is already in use. Please log in or use a different email.";
+      } else if (error.code === 'auth/weak-password') {
+        description = "The password is too weak.";
+      } else if (error.code === 'auth/operation-not-allowed') {
+        description = "Email/password accounts are not enabled.";
       }
+      
       toast({
         variant: "destructive",
         title: "Sign Up Failed",
@@ -68,21 +72,31 @@ export function SignupForm() {
   return (
     <AuthCard
       title={isSubmitted ? "Check your email" : "Create an account"}
-      description={isSubmitted ? "We've sent a verification link to your email address." : "Enter your information to create a new account"}
+      description={
+        isSubmitted
+          ? "We've sent a verification link to your email address."
+          : "Enter your information to create a new account"
+      }
       footerContent={
         <div className="text-center text-sm text-muted-foreground w-full">
           {isSubmitted ? (
             <>
               Verified your email?{' '}
-              <Link href="/login" className="font-semibold text-primary underline-offset-4 hover:underline">
+              <Link
+                href="/login"
+                className="font-semibold text-primary underline-offset-4 hover:underline"
+              >
                 Log In
               </Link>
             </>
           ) : (
             <>
               Already have an account?{" "}
-              <Link href="/login" className="font-semibold text-primary underline-offset-4 hover:underline">
-                  Log In
+              <Link
+                href="/login"
+                className="font-semibold text-primary underline-offset-4 hover:underline"
+              >
+                Log In
               </Link>
             </>
           )}
@@ -91,7 +105,8 @@ export function SignupForm() {
     >
       {isSubmitted ? (
         <div className="py-4 text-center text-sm">
-          Please click the link in the email to finish signing up. You may need to check your spam folder.
+          Please click the link in the email to finish signing up. You may need
+          to check your spam folder.
         </div>
       ) : (
         <Form {...form}>
