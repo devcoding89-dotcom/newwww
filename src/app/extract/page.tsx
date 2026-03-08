@@ -64,10 +64,9 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGlobalLoading } from "@/hooks/use-global-loading";
-import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, doc, addDoc, deleteDoc, query, orderBy, serverTimestamp } from "firebase/firestore";
-import type { ContactList, Contact } from "@/lib/types";
+import { collection, doc, addDoc, deleteDoc, query, orderBy, serverTimestamp, writeBatch } from "firebase/firestore";
+import type { Contact } from "@/lib/types";
 import { formatDistanceToNow, isToday, isWithinInterval, subDays, subMonths } from "date-fns";
 
 type ExtractedState = {
@@ -86,8 +85,6 @@ export default function ExtractPage() {
   
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState("all");
-
-  const [contactLists, setContactLists] = useLocalStorage<ContactList[]>("contact-lists", []);
 
   const parsesQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
@@ -109,13 +106,8 @@ export default function ExtractPage() {
     }
     
     setIsLoading(true);
-    const minWait = new Promise(resolve => setTimeout(resolve, 2500));
-    
     try {
-      const [result] = await Promise.all([
-        extractEmailsAction({ text: textValue }),
-        minWait
-      ]);
+      const result = await extractEmailsAction({ text: textValue });
       setIsLoading(false);
       return { contacts: result.contacts };
     } catch (e: any) {
@@ -130,16 +122,9 @@ export default function ExtractPage() {
       const searchLower = searchQuery.toLowerCase();
       const matchesSearch = 
         (snapshot.title?.toLowerCase() || "").includes(searchLower) ||
-        (snapshot.text?.toLowerCase() || "").includes(searchLower) ||
-        snapshot.contacts?.some((c: any) => 
-          c.email.toLowerCase().includes(searchLower) || 
-          c.firstName.toLowerCase().includes(searchLower) ||
-          c.lastName.toLowerCase().includes(searchLower) ||
-          c.company.toLowerCase().includes(searchLower)
-        );
+        (snapshot.text?.toLowerCase() || "").includes(searchLower);
 
       if (!matchesSearch) return false;
-
       if (dateFilter === "all") return true;
       
       const createdAt = snapshot.createdAt?.toDate ? snapshot.createdAt.toDate() : new Date(snapshot.createdAt);
@@ -157,10 +142,7 @@ export default function ExtractPage() {
     if (state?.contacts && state.contacts.length > 0) {
       const emailList = state.contacts.map(c => c.email).join("\n");
       navigator.clipboard.writeText(emailList);
-      toast({
-        title: "Copied!",
-        description: `${state.contacts.length} emails copied to clipboard.`,
-      });
+      toast({ title: "Copied!", description: `${state.contacts.length} emails copied.` });
     }
   };
 
@@ -175,11 +157,8 @@ export default function ExtractPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `extracted_contacts_${new Date().getTime()}.csv`);
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
+    link.setAttribute("download", `extracted_contacts_${Date.now()}.csv`);
     link.click();
-    document.body.removeChild(link);
   };
 
   const handleSaveSnapshot = () => {
@@ -195,18 +174,12 @@ export default function ExtractPage() {
 
     addDoc(collection(db, "users", user.uid, "parses"), parseData);
     setSnapshotTitle("");
-    toast({
-      title: "Snapshot Saved",
-      description: `Saved as "${parseData.title}" to your history.`,
-    });
+    toast({ title: "Snapshot Saved" });
   };
 
   const handleLoadSnapshot = (snapshot: any) => {
     setText(snapshot.text);
-    toast({
-        title: "Snapshot Loaded",
-        description: `Text reloaded for "${snapshot.title}"`,
-    });
+    toast({ title: "Snapshot Loaded" });
   };
 
   const handleDeleteSnapshot = (id: string) => {
@@ -215,93 +188,100 @@ export default function ExtractPage() {
     toast({ title: "Snapshot Deleted" });
   };
 
-  const handleCreateCampaign = () => {
-    if (!state?.contacts || state.contacts.length === 0) return;
+  const handleCreateCampaign = async () => {
+    if (!state?.contacts || state.contacts.length === 0 || !db || !user) return;
 
-    const newList: ContactList = {
-      id: crypto.randomUUID(),
-      name: `Extracted List - ${new Date().toLocaleDateString()}`,
-      contacts: state.contacts.map(c => ({
-        ...c,
-        id: crypto.randomUUID(),
-        isValid: true
-      }))
-    };
+    setIsLoading(true);
+    try {
+      // 1. Create a new Contact List in Firestore
+      const listName = `Extracted List - ${new Date().toLocaleDateString()}`;
+      const batch = writeBatch(db);
+      
+      const newContactIds: string[] = [];
+      for (const c of state.contacts) {
+        const contactRef = doc(collection(db, "users", user.uid, "contacts"));
+        batch.set(contactRef, {
+          ...c,
+          userId: user.uid,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          isValid: true,
+        });
+        newContactIds.push(contactRef.id);
+      }
 
-    setContactLists([...contactLists, newList]);
-    
-    toast({
-      title: "Contact List Created",
-      description: `Created "${newList.name}" with ${newList.contacts.length} contacts.`,
-    });
-    router.push("/campaigns/new");
+      const listRef = doc(collection(db, "users", user.uid, "contactLists"));
+      batch.set(listRef, {
+        name: listName,
+        userId: user.uid,
+        contactIds: newContactIds,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      await batch.commit();
+
+      toast({ title: "Contact List Created", description: `"${listName}" added to library.` });
+      router.push("/campaigns/new");
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to initialize campaign." });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     try {
       const fileText = await file.text();
       setText(fileText);
-      toast({
-        title: "File Loaded",
-        description: `Successfully loaded ${file.name}. Click extract to process.`,
-      });
+      toast({ title: "File Loaded", description: `Ready to process ${file.name}.` });
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Upload Failed",
-        description: "Could not read the file content.",
-      });
+      toast({ variant: "destructive", title: "Upload Failed" });
     }
   };
 
   return (
     <div className="container mx-auto py-4 sm:py-8">
       <PageHeader
-        title="Extract Contacts"
-        description="Paste text or upload a file to intelligently extract contacts."
+        title="Extract Intelligence"
+        description="Paste raw data or upload files to identify unique leads."
       >
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" asChild>
             <label htmlFor="file-upload" className="cursor-pointer">
               <Upload className="mr-2 h-4 w-4" />
-              <span className="hidden sm:inline">Upload File</span>
-              <span className="sm:hidden">Upload</span>
-              <input 
-                id="file-upload" 
-                type="file" 
-                accept=".txt,.csv" 
-                className="sr-only" 
-                onChange={handleFileUpload}
-              />
+              Upload File
+              <input id="file-upload" type="file" accept=".txt,.csv" className="sr-only" onChange={handleFileUpload} />
             </label>
           </Button>
         </div>
       </PageHeader>
 
-      <div className="grid gap-6 sm:gap-8 lg:grid-cols-3">
-        <div className="space-y-6 sm:space-y-8 lg:col-span-2">
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle>Input Text</CardTitle>
+              <CardTitle>Source Data</CardTitle>
             </CardHeader>
             <CardContent>
               <form action={formAction}>
                 <div className="grid w-full gap-4">
                   <Textarea
                     name="text"
-                    placeholder="Paste email signatures, profiles, or text here..."
-                    className="min-h-[200px] sm:min-h-[300px] resize-y"
+                    placeholder="Paste email signatures, LinkedIn profiles, or mixed text here..."
+                    className="min-h-[300px] resize-y"
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                   />
-                  <Button type="submit" disabled={isPending || !text.trim()}>
-                    {isPending && (
+                  <Button type="submit" disabled={isPending || !text.trim()} className="w-full">
+                    {isPending ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="mr-2 h-4 w-4" />
                     )}
-                    {isPending ? "Extracting..." : "Intelligent Extraction"}
+                    {isPending ? "Processing with AI..." : "Intelligent Extraction"}
                   </Button>
                 </div>
               </form>
@@ -313,31 +293,23 @@ export default function ExtractPage() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
                   <History className="h-5 w-5 text-primary" />
-                  <CardTitle>Recent Parses</CardTitle>
+                  <CardTitle>History</CardTitle>
                 </div>
-                
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <div className="relative flex-1 sm:flex-none">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="search"
-                      placeholder="Search history..."
-                      className="w-full pl-8 sm:w-[200px]"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </div>
-                  
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Search history..."
+                    className="w-[180px]"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
                   <Select value={dateFilter} onValueChange={setDateFilter}>
-                    <SelectTrigger className="w-full sm:w-[140px]">
-                      <Filter className="mr-2 h-4 w-4" />
-                      <SelectValue placeholder="Date filter" />
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue placeholder="Date" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Time</SelectItem>
+                      <SelectItem value="all">All</SelectItem>
                       <SelectItem value="today">Today</SelectItem>
-                      <SelectItem value="week">Past Week</SelectItem>
-                      <SelectItem value="month">Past Month</SelectItem>
+                      <SelectItem value="week">Week</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -346,65 +318,27 @@ export default function ExtractPage() {
             <CardContent>
               {parsesLoading ? (
                 <div className="flex h-[150px] items-center justify-center">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  <Loader2 className="h-6 w-6 animate-spin" />
                 </div>
               ) : filteredSnapshots.length > 0 ? (
-                <div className="rounded-md border overflow-x-auto">
+                <div className="rounded-md border">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Title</TableHead>
-                        <TableHead className="hidden sm:table-cell">Contacts</TableHead>
-                        <TableHead className="hidden sm:table-cell">Date</TableHead>
+                        <TableHead>Snapshot Title</TableHead>
+                        <TableHead className="hidden sm:table-cell">Recipients</TableHead>
                         <TableHead className="text-right">Action</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredSnapshots.map((snapshot: any) => (
-                        <TableRow 
-                          key={snapshot.id} 
-                          className="cursor-pointer hover:bg-muted/50"
-                          onClick={() => handleLoadSnapshot(snapshot)}
-                        >
-                          <TableCell className="font-medium">
-                            <div className="flex flex-col">
-                              <span className="truncate max-w-[150px] sm:max-w-none">{snapshot.title}</span>
-                              <span className="text-[10px] text-muted-foreground sm:hidden">
-                                {snapshot.contacts?.length || snapshot.emails?.length || 0} contacts • {snapshot.createdAt ? formatDistanceToNow(snapshot.createdAt.toDate ? snapshot.createdAt.toDate() : new Date(snapshot.createdAt), { addSuffix: true }) : 'N/A'}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="hidden sm:table-cell">{snapshot.contacts?.length || snapshot.emails?.length || 0}</TableCell>
-                          <TableCell className="hidden sm:table-cell text-xs text-muted-foreground">
-                            {snapshot.createdAt ? formatDistanceToNow(snapshot.createdAt.toDate ? snapshot.createdAt.toDate() : new Date(snapshot.createdAt), { addSuffix: true }) : 'N/A'}
-                          </TableCell>
+                        <TableRow key={snapshot.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleLoadSnapshot(snapshot)}>
+                          <TableCell className="font-medium truncate max-w-[200px]">{snapshot.title}</TableCell>
+                          <TableCell className="hidden sm:table-cell">{snapshot.emails?.length || 0}</TableCell>
                           <TableCell className="text-right">
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Snapshot?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Permanently delete "{snapshot.title}"?
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDeleteSnapshot(snapshot.id)}>
-                                    Delete
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
+                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDeleteSnapshot(snapshot.id); }}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -412,8 +346,8 @@ export default function ExtractPage() {
                   </Table>
                 </div>
               ) : (
-                <div className="flex h-[150px] flex-col items-center justify-center rounded-lg border border-dashed text-center">
-                  <p className="text-sm text-muted-foreground">No extractions saved yet.</p>
+                <div className="p-12 text-center text-muted-foreground border border-dashed rounded-lg">
+                  <p>No previous extractions found.</p>
                 </div>
               )}
             </CardContent>
@@ -421,102 +355,78 @@ export default function ExtractPage() {
         </div>
 
         <div className="lg:col-span-1">
-          <Card className="lg:sticky lg:top-20">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <Card className="sticky top-20">
+            <CardHeader className="flex flex-row items-center justify-between">
               <div className="flex items-center gap-2">
-                <CardTitle>Results</CardTitle>
-                {state?.contacts && (
-                  <Badge variant="secondary" className="font-mono">
-                    {state.contacts.length}
-                  </Badge>
-                )}
+                <CardTitle>Leads Found</CardTitle>
+                {state?.contacts && <Badge variant="secondary">{state.contacts.length}</Badge>}
               </div>
               {state?.contacts && state.contacts.length > 0 && (
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={handleCopy} className="hidden sm:flex">
-                    <Copy className="h-4 w-4 mr-2" />
-                    Copy
-                  </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={handleExportCSV}>
-                        <FileSpreadsheet className="h-4 w-4 mr-2" />
-                        CSV
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                <Button variant="outline" size="sm" onClick={handleExportCSV}>
+                  <Download className="h-4 w-4" />
+                </Button>
               )}
             </CardHeader>
             <CardContent className="space-y-4">
-              {isPending && (
-                <div className="flex h-[200px] sm:h-[300px] items-center justify-center">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              {isPending ? (
+                <div className="flex h-[300px] flex-col items-center justify-center gap-4 text-center">
+                  <div className="relative">
+                     <Loader2 className="h-12 w-12 animate-spin text-primary opacity-20" />
+                     <Sparkles className="h-6 w-6 text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-bold">Analyzing Context</p>
+                    <p className="text-xs text-muted-foreground">Extracting names, companies, and roles...</p>
+                  </div>
                 </div>
-              )}
-              
-              {state?.contacts && (
+              ) : state?.contacts ? (
                 <>
-                  <div className="h-[250px] sm:h-[350px] overflow-auto rounded-md border bg-muted/50">
+                  <div className="h-[400px] overflow-auto rounded-md border bg-muted/30">
                     <Table>
                       <TableHeader className="bg-muted sticky top-0 z-10">
                         <TableRow>
-                          <TableHead className="text-xs">Contact</TableHead>
-                          <TableHead className="text-xs">Details</TableHead>
+                          <TableHead className="text-[10px] uppercase">Identity</TableHead>
+                          <TableHead className="text-[10px] uppercase">Role</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {state.contacts.map((contact, index) => (
-                          <TableRow key={index}>
+                          <TableRow key={index} className="text-[11px]">
                             <TableCell>
-                              <div className="flex flex-col">
-                                <span className="text-sm font-semibold truncate max-w-[120px]">
-                                  {contact.firstName || contact.lastName ? `${contact.firstName} ${contact.lastName}` : "Unknown"}
-                                </span>
-                                <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">{contact.email}</span>
-                              </div>
+                              <div className="font-bold truncate max-w-[120px]">{contact.firstName} {contact.lastName}</div>
+                              <div className="text-muted-foreground truncate max-w-[120px]">{contact.email}</div>
                             </TableCell>
                             <TableCell>
-                              <div className="flex flex-col text-[10px]">
-                                <span className="truncate max-w-[100px]">{contact.company}</span>
-                                <span className="text-muted-foreground truncate max-w-[100px]">{contact.position}</span>
-                              </div>
+                              <div className="font-medium truncate max-w-[100px]">{contact.company}</div>
+                              <div className="text-muted-foreground truncate max-w-[100px]">{contact.position}</div>
                             </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
                     </Table>
                   </div>
-                  
-                  <div className="space-y-3 pt-2">
+                  <div className="space-y-3">
                     <div className="flex gap-2">
                       <Input 
-                        placeholder="Save as..." 
+                        placeholder="Snapshot name..." 
                         value={snapshotTitle}
                         onChange={(e) => setSnapshotTitle(e.target.value)}
                         className="flex-1"
                       />
-                      <Button variant="secondary" onClick={handleSaveSnapshot}>
+                      <Button variant="secondary" size="icon" onClick={handleSaveSnapshot}>
                         <Save className="h-4 w-4" />
                       </Button>
                     </div>
-                    <Button className="w-full" onClick={handleCreateCampaign}>
+                    <Button className="w-full font-bold" onClick={handleCreateCampaign}>
                       <Send className="mr-2 h-4 w-4" />
-                      New Campaign
+                      Start Campaign
                     </Button>
                   </div>
                 </>
-              )}
-              
-              {!isPending && !state && (
-                <div className="flex h-[200px] sm:h-[300px] flex-col items-center justify-center rounded-md border border-dashed text-center p-6 text-muted-foreground">
-                  <ExternalLink className="h-8 w-8 mb-2 opacity-20" />
-                  <p className="text-sm">Paste text to extract contacts.</p>
+              ) : (
+                <div className="flex h-[300px] flex-col items-center justify-center text-center p-6 border border-dashed rounded-lg opacity-40">
+                  <ExternalLink className="h-8 w-8 mb-4" />
+                  <p className="text-sm">Identify prospects by pasting data on the left.</p>
                 </div>
               )}
             </CardContent>

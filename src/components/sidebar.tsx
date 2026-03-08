@@ -16,18 +16,19 @@ import {
   Send,
   Settings,
   ShieldCheck,
+  FileText
 } from "lucide-react";
 import { Icons } from "@/components/icons";
 import { cn } from "@/lib/utils";
-import { useDoc, useUser, useFirestore } from "@/firebase";
+import { useDoc, useUser, useFirestore, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
-import { useMemo } from "react";
 
 const navLinks = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/extract", label: "Extract Emails", icon: Mailbox },
-  { href: "/contacts", label: "Contacts", icon: Users },
-  { href: "/campaigns", label: "Campaigns", icon: Send },
+  { href: "/extract", label: "Extract Intelligence", icon: Mailbox },
+  { href: "/contacts", label: "Contact Lists", icon: Users },
+  { href: "/templates", label: "Email Templates", icon: FileText },
+  { href: "/campaigns", label: "Campaign Builder", icon: Send },
 ];
 
 export function Sidebar() {
@@ -35,7 +36,7 @@ export function Sidebar() {
   const { user } = useUser();
   const db = useFirestore();
 
-  const userProfileRef = useMemo(() => {
+  const userProfileRef = useMemoFirebase(() => {
     if (!db || !user) return null;
     return doc(db, "users", user.uid);
   }, [db, user]);

@@ -25,6 +25,20 @@
         "email"
       ]
     },
+    "Template": {
+      "title": "Email Template",
+      "description": "A reusable email structure with subject and body.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "subject": { "type": "string" },
+        "body": { "type": "string" },
+        "category": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "subject", "body", "createdAt"]
+    },
     "Parse": {
       "title": "Email Parse Result",
       "description": "Stores the result of an AI email extraction process.",
@@ -127,6 +141,12 @@
       },
       "description": "Stores public user profile data."
     },
+    "/users/{userId}/templates/{templateId}": {
+      "schema": {
+        "$ref": "#/entities/Template"
+      },
+      "description": "Stores reusable email templates."
+    },
     "/users/{userId}/parses/{parseId}": {
       "schema": {
         "$ref": "#/entities/Parse"
@@ -144,6 +164,14 @@
         "$ref": "#/entities/EmailLog"
       },
       "description": "Stores individual delivery logs for a campaign."
+    },
+    "/users/{userId}/contactLists/{listId}": {
+      "schema": { "type": "object" },
+      "description": "Stores recipient contact lists."
+    },
+    "/users/{userId}/contacts/{contactId}": {
+      "schema": { "type": "object" },
+      "description": "Stores individual contact profiles."
     }
   }
 }

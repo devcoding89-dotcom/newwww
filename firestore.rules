@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -9,73 +10,45 @@ service cloud.firestore {
      * This ruleset enforces a strict "User-Ownership" model. EmailCraft Studio is designed so 
      * that every piece of data—from contacts to campaign logs—is private and belongs 
      * exclusively to the authenticated user who created it.
-     * 
-     * DATA STRUCTURE:
-     * The database follows a hierarchical structure where all data is nested under 
-     * /users/{userId}. This allows for clear path-based authorization.
      */
 
     // --- Helper Functions ---
 
-    /** Checks if the request is from an authenticated user. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /** Checks if the authenticated user's UID matches the provided userId. */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
-    }
-
-    /** Checks if a document exists and if the requester is the owner. */
-    function isExistingOwner(userId) {
-      return resource != null && isOwner(userId);
     }
 
     // --- Collection Rules ---
 
     match /users/{userId} {
-      /**
-       * @description User Profile rules.
-       */
-      allow get: if isOwner(userId);
-      allow list: if false; 
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      /** User Profile rules. */
+      allow get, create, update, delete: if isOwner(userId);
+      allow list: if isOwner(userId);
 
-      /**
-       * @description Email Extraction Results (Parses).
-       * Matches the 'parses' collection name used in the app code.
-       */
+      /** Nested resources - all follow the same ownership pattern. */
       match /parses/{parseId} {
         allow read, write: if isOwner(userId);
       }
+      
+      match /templates/{templateId} {
+        allow read, write: if isOwner(userId);
+      }
 
-      /**
-       * @description Individual Contacts.
-       */
       match /contacts/{contactId} {
         allow read, write: if isOwner(userId);
       }
 
-      /**
-       * @description Contact Lists (Groupings).
-       */
       match /contactLists/{contactListId} {
         allow read, write: if isOwner(userId);
       }
 
-      /**
-       * @description Email Campaigns.
-       */
       match /campaigns/{campaignId} {
         allow read, write: if isOwner(userId);
 
-        /**
-         * @description Individual Delivery Logs for a campaign.
-         * Matches the 'logs' subcollection name used in the app code.
-         */
         match /logs/{logId} {
           allow read, write: if isOwner(userId);
         }
