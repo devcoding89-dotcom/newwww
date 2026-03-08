@@ -60,7 +60,8 @@ import {
   FileSpreadsheet,
   Search,
   Filter,
-  Upload
+  Upload,
+  Sparkles
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGlobalLoading } from "@/hooks/use-global-loading";
