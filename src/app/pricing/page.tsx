@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -35,7 +34,7 @@ export default function PricingPage() {
       
       if (result.simulation) {
         // Prototype Simulation Logic
-        toast({ title: "Simulating Payment Process...", description: "Connecting to Paystack Secure..." });
+        toast({ title: "Simulating Local Payment...", description: "Connecting to Paystack Secure Gateway..." });
         await new Promise(r => setTimeout(r, 2000));
         
         if (userProfileRef) {
@@ -43,14 +42,14 @@ export default function PricingPage() {
             subscriptionTier: "elite",
             updatedAt: new Date().toISOString()
           });
-          toast({ title: "Payment Successful!", description: "Welcome to Elite membership." });
+          toast({ title: "₦1,000 Payment Successful!", description: "Welcome to Elite membership, Tunde!" });
         }
       } else if (result.data?.authorization_url) {
         // Real Paystack Redirect
         window.location.href = result.data.authorization_url;
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Payment Failed", description: "Please try again later." });
+      toast({ variant: "destructive", title: "Payment Failed", description: "Could not connect to Paystack. Try again." });
     } finally {
       setLoading(false);
     }
@@ -63,10 +62,10 @@ export default function PricingPage() {
       <div className="text-center mb-16 space-y-4">
         <PageHeader 
           title="Simple, Transparent Pricing" 
-          description="Scale your outreach with our Elite infrastructure."
+          description="Scale your Nigerian business with our Elite infrastructure."
         />
         <p className="text-muted-foreground text-lg">
-          Join 2,000+ Nigerian businesses automating their sales intelligence.
+          Join 15,000+ local professionals automating their sales intelligence in Lagos, Abuja, and beyond.
         </p>
       </div>
 
@@ -74,8 +73,8 @@ export default function PricingPage() {
         {/* Free Tier */}
         <Card className="flex flex-col relative overflow-hidden">
           <CardHeader>
-            <CardTitle className="text-xl">Free Tier</CardTitle>
-            <CardDescription>Perfect for individual testing.</CardDescription>
+            <CardTitle className="text-xl">Free Starter</CardTitle>
+            <CardDescription>Perfect for testing the AI extraction.</CardDescription>
             <div className="mt-4 flex items-baseline gap-1">
               <span className="text-4xl font-bold">₦0</span>
               <span className="text-muted-foreground">/month</span>
@@ -83,10 +82,11 @@ export default function PricingPage() {
           </CardHeader>
           <CardContent className="flex-1 space-y-4">
             <div className="space-y-2">
-              <FeatureItem text="50 AI Email Extractions" />
+              <FeatureItem text="50 AI Lead Extractions" />
               <FeatureItem text="1 Active Campaign" />
-              <FeatureItem text="Standard Delivery Rates" />
-              <FeatureItem text="Basic Personalization" />
+              <FeatureItem text="Standard MX Verification" />
+              <FeatureItem text="Personalization Tokens" />
+              <FeatureItem text="Paystack Not Required" />
               <FeatureItem text="Community Support" inactive />
             </div>
           </CardContent>
@@ -103,14 +103,14 @@ export default function PricingPage() {
           isElite && "border-green-500 shadow-green-100"
         )}>
           <div className="absolute top-0 right-0 p-1 bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-widest px-3 rounded-bl-lg">
-            Recommended
+            Best Value
           </div>
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-xl">Elite Growth</CardTitle>
               <Zap className="h-5 w-5 text-amber-500 fill-amber-500" />
             </div>
-            <CardDescription>For serious marketing teams.</CardDescription>
+            <CardDescription>For serious marketing studios.</CardDescription>
             <div className="mt-4 flex items-baseline gap-1">
               <span className="text-4xl font-bold">₦1,000</span>
               <span className="text-muted-foreground">/month</span>
@@ -118,12 +118,12 @@ export default function PricingPage() {
           </CardHeader>
           <CardContent className="flex-1 space-y-4">
             <div className="space-y-2">
-              <FeatureItem text="Unlimited AI Extractions" highlight />
+              <FeatureItem text="Unlimited AI Lead Extractions" highlight />
               <FeatureItem text="Unlimited Email Campaigns" highlight />
-              <FeatureItem text="Priority Batch Processing" highlight />
-              <FeatureItem text="Custom Domain Sending" highlight />
-              <FeatureItem text="Advanced Analytics Dashboard" highlight />
-              <FeatureItem text="24/7 Priority Support" highlight />
+              <FeatureItem text="Priority Local Processing" highlight />
+              <FeatureItem text="Custom Domain Branding" highlight />
+              <FeatureItem text="Elite Performance Reports" highlight />
+              <FeatureItem text="24/7 Priority WhatsApp Support" highlight />
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
@@ -137,7 +137,7 @@ export default function PricingPage() {
             </Button>
             <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground">
               <CreditCard className="h-3 w-3" />
-              Secure payments via Paystack
+              Secure Paystack Payment (Card, Transfer, USSD)
             </div>
           </CardFooter>
         </Card>
@@ -146,18 +146,18 @@ export default function PricingPage() {
       <div className="mt-20 grid gap-8 md:grid-cols-3">
         <ValueCard 
           icon={<ShieldCheck className="h-8 w-8 text-green-500" />}
-          title="Verified Delivery"
-          description="Elite members get access to pre-warmed sending infrastructure."
+          title="Nigerian Verified"
+          description="Optimized delivery for Nigerian domains and business networks."
         />
         <ValueCard 
           icon={<Zap className="h-8 w-8 text-amber-500" />}
-          title="AI Speed"
-          description="Zero-queue processing for all intelligent data extractions."
+          title="Lagos Speed AI"
+          description="Our extraction engine is fine-tuned for the local business context."
         />
         <ValueCard 
           icon={<CreditCard className="h-8 w-8 text-blue-500" />}
-          title="Local Payments"
-          description="Pay easily in Naira via Transfer, USSD, or Card."
+          title="Local Infrastructure"
+          description="Proudly supporting the local ecosystem with ₦ payments via Paystack."
         />
       </div>
     </div>

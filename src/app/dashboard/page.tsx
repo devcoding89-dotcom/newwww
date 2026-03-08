@@ -1,10 +1,9 @@
-
 "use client";
 
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, Mail, Rocket, AlertTriangle, CheckCircle2, BarChart3, Loader2, Target, ShieldCheck, TrendingUp } from "lucide-react";
+import { Users, Mail, Rocket, AlertTriangle, CheckCircle2, BarChart3, Loader2, Target, ShieldCheck, TrendingUp, Sparkles } from "lucide-react";
 import PageHeader from "@/components/page-header";
 import {
   ChartContainer,
@@ -12,14 +11,23 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Bar, BarChart, XAxis, YAxis, Cell, Line, LineChart, ResponsiveContainer } from "recharts";
-import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy, limit } from "firebase/firestore";
+import { useFirestore, useUser, useCollection, useMemoFirebase, useDoc } from "@/firebase";
+import { collection, query, orderBy, limit, doc } from "firebase/firestore";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
   const db = useFirestore();
+
+  const userProfileRef = useMemoFirebase(() => {
+    if (!db || !user) return null;
+    return doc(db, "users", user.uid);
+  }, [db, user]);
+
+  const { data: profile } = useDoc(userProfileRef);
 
   const parsesQuery = useMemoFirebase(() => {
     if (!db || !user) return null;
@@ -86,16 +94,27 @@ export default function DashboardPage() {
     );
   }
 
+  const isElite = profile?.subscriptionTier === "elite";
+
   return (
     <div className="container mx-auto py-4 sm:py-8 max-w-7xl">
-      <PageHeader
-        title="Studio Insights"
-        description={`Welcome back, ${user?.displayName || 'User'}. Tracking ${campaigns?.length || 0} active campaigns.`}
-      />
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+        <PageHeader
+          title="Studio Insights"
+          description={`Welcome back, ${user?.displayName || 'User'}. Tracking ${campaigns?.length || 0} active campaigns.`}
+        />
+        {!isElite && (
+          <Button variant="outline" className="border-amber-500 text-amber-600 hover:bg-amber-50" asChild>
+             <Link href="/pricing">
+               <Sparkles className="mr-2 h-4 w-4" /> Upgrade to Elite
+             </Link>
+          </Button>
+        )}
+      </div>
       
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-8">
         <StatCard 
-          title="Total Audience" 
+          title="Local Audience" 
           value={stats.total.toLocaleString()} 
           label="Unique verified leads" 
           icon={<Users className="h-4 w-4 text-primary" />} 
@@ -115,7 +134,7 @@ export default function DashboardPage() {
         <StatCard 
           title="AI Intelligence" 
           value={(parses?.length || 0).toString()} 
-          label="Recent Extractions" 
+          label="Extractions in Lagos" 
           icon={<Target className="h-4 w-4 text-accent" />} 
         />
       </div>
@@ -127,7 +146,7 @@ export default function DashboardPage() {
               <TrendingUp className="h-5 w-5 text-primary" />
               <CardTitle>Delivery Performance</CardTitle>
             </div>
-            <CardDescription>Outcome tracking across your most recent campaigns.</CardDescription>
+            <CardDescription>Outcome tracking across your recent Nigerian outreach batches.</CardDescription>
           </CardHeader>
           <CardContent className="h-[350px] pt-4">
              <ChartContainer config={chartConfig}>
@@ -146,7 +165,7 @@ export default function DashboardPage() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-primary" />
-              <CardTitle>Reputation Health</CardTitle>
+              <CardTitle>List Health</CardTitle>
             </div>
             <CardDescription>Overall database verification status.</CardDescription>
           </CardHeader>
@@ -179,7 +198,7 @@ export default function DashboardPage() {
                  <div key={c.id} className="p-4 rounded-xl border bg-muted/20 flex flex-col gap-2">
                     <div className="flex justify-between items-start">
                       <span className="text-xs font-bold truncate pr-2">{c.name}</span>
-                      <Badge variant="secondary" className="text-[10px]">{c.status}</Badge>
+                      <Badge variant="secondary" className="text-[10px] uppercase font-black">{c.status}</Badge>
                     </div>
                     <div className="flex justify-between text-[10px]">
                       <span className="text-muted-foreground">Success Rate</span>
