@@ -58,3 +58,14 @@ export interface ExtractionSnapshot {
   contacts: Omit<Contact, "id">[];
   createdAt: string;
 }
+
+export type SubscriptionTier = "free" | "elite";
+
+export interface UserProfile {
+  id: string;
+  displayName: string;
+  email: string;
+  isAdmin?: boolean;
+  subscriptionTier: SubscriptionTier;
+  createdAt: string;
+}

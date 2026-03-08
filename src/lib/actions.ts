@@ -16,10 +16,6 @@ import type { Campaign, Contact, SenderSettings } from "./types";
 import dns from "dns/promises";
 import sgMail from "@sendgrid/mail";
 
-/**
- * PLATFORM-MANAGED INFRASTRUCTURE (Twilio SendGrid API Integration)
- */
-
 // CONFIGURE YOUR SENDGRID API KEY HERE
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || "YOUR_SENDGRID_API_KEY"; 
 sgMail.setApiKey(SENDGRID_API_KEY);
@@ -77,72 +73,38 @@ export async function verifyDomainAction(domain: string): Promise<{ success: boo
   return { success: false, message: "Could not find valid DNS records for this domain." };
 }
 
-// Personalization Helper
-function personalize(template: string, contact: Contact): string {
-  let content = template;
-  const tokens: { [key: string]: string | undefined } = {
-    '{{firstName}}': contact.firstName,
-    '{{lastName}}': contact.lastName,
-    '{{name}}': `${contact.firstName} ${contact.lastName}`.trim(),
-    '{{email}}': contact.email,
-    '{{company}}': contact.company,
-    '{{position}}': contact.position,
-  };
-
-  for (const [key, value] of Object.entries(tokens)) {
-    content = content.replace(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), value || '');
-  }
-  return content;
-}
-
-// Bulk Send Logic (API-based queued sending)
-export async function processBatchAction(
-  campaign: Campaign,
-  batchContacts: Contact[],
-  sender: SenderSettings
-): Promise<{ sent: number; failed: number; logs: any[] }> {
-  const logs: any[] = [];
-  let sent = 0;
-  let failed = 0;
-
-  for (const contact of batchContacts) {
-    const personalizedBody = personalize(campaign.body, contact);
-    const personalizedSubject = personalize(campaign.subject, contact);
-
-    const msg = {
-      to: contact.email,
-      from: {
-        name: sender.fromName,
-        email: sender.fromEmail,
-      },
-      subject: personalizedSubject,
-      html: personalizedBody,
+/**
+ * PAYSTACK PAYMENT INITIALIZATION
+ */
+export async function initializePaymentAction(email: string, amount: number) {
+  const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
+  
+  if (!PAYSTACK_SECRET_KEY) {
+    // Prototype mode: Return a simulation signal if no key is found
+    return { 
+      simulation: true, 
+      message: "Secret key missing. Proceeding with prototype simulation." 
     };
-
-    try {
-      if (SENDGRID_API_KEY === "YOUR_SENDGRID_API_KEY") {
-        // PROTOTYPE MODE: Simulate API latency and success
-        await new Promise(r => setTimeout(r, 100));
-      } else {
-        await sgMail.send(msg);
-      }
-      
-      sent++;
-      logs.push({
-        recipientEmail: contact.email,
-        status: "delivered",
-        timestamp: new Date().toISOString()
-      });
-    } catch (error: any) {
-      failed++;
-      logs.push({
-        recipientEmail: contact.email,
-        status: "failed",
-        error: error.message,
-        timestamp: new Date().toISOString()
-      });
-    }
   }
 
-  return { sent, failed, logs };
+  try {
+    const response = await fetch("https://api.paystack.co/transaction/initialize", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+        amount: amount * 100, // Paystack amount is in kobo
+        callback_url: `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:9002"}/api/paystack/verify`,
+      }),
+    });
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Paystack Init Error:", error);
+    throw new Error("Failed to initialize payment.");
+  }
 }

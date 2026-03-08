@@ -16,7 +16,8 @@ import {
   Send,
   Settings,
   ShieldCheck,
-  FileText
+  FileText,
+  CreditCard
 } from "lucide-react";
 import { Icons } from "@/components/icons";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,7 @@ const navLinks = [
   { href: "/contacts", label: "Contact Lists", icon: Users },
   { href: "/templates", label: "Email Templates", icon: FileText },
   { href: "/campaigns", label: "Campaign Builder", icon: Send },
+  { href: "/pricing", label: "Elite Pricing", icon: CreditCard },
 ];
 
 export function Sidebar() {

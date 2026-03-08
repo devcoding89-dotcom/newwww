@@ -3,7 +3,7 @@
   "entities": {
     "UserProfile": {
       "title": "User Profile",
-      "description": "Represents a user's public profile information.",
+      "description": "Represents a user's public profile information and subscription status.",
       "type": "object",
       "properties": {
         "displayName": {
@@ -18,11 +18,21 @@
         "isAdmin": {
           "type": "boolean",
           "description": "Whether the user has administrative privileges."
+        },
+        "subscriptionTier": {
+          "type": "string",
+          "enum": ["free", "elite"],
+          "description": "The current billing plan of the user."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
         }
       },
       "required": [
         "displayName",
-        "email"
+        "email",
+        "subscriptionTier"
       ]
     },
     "Template": {
@@ -77,10 +87,6 @@
           "type": "string",
           "format": "date-time",
           "description": "The timestamp when the extraction was performed."
-        },
-        "campaignTitle": {
-          "type": "string",
-          "description": "Optional title if associated with a specific campaign."
         }
       },
       "required": [
@@ -107,25 +113,10 @@
         "sentCount": { "type": "number" },
         "failedCount": { "type": "number" },
         "totalCount": { "type": "number" },
-        "scheduledAt": { "type": "string", "format": "date-time" },
-        "smartRateLimiting": { "type": "boolean" },
-        "pauseOnBounceThreshold": { "type": "boolean" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "subject", "body", "status", "createdAt"]
-    },
-    "EmailLog": {
-      "title": "Email Delivery Log",
-      "description": "A record of an individual email delivery attempt.",
-      "type": "object",
-      "properties": {
-        "recipientEmail": { "type": "string" },
-        "status": { "type": "string", "enum": ["delivered", "bounced", "failed"] },
-        "error": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" }
-      },
-      "required": ["recipientEmail", "status", "timestamp"]
     }
   },
   "auth": {
@@ -139,7 +130,7 @@
       "schema": {
         "$ref": "#/entities/UserProfile"
       },
-      "description": "Stores public user profile data."
+      "description": "Stores user profile and subscription status."
     },
     "/users/{userId}/templates/{templateId}": {
       "schema": {
@@ -151,19 +142,13 @@
       "schema": {
         "$ref": "#/entities/Parse"
       },
-      "description": "Stores a user's history of email extraction results (parses)."
+      "description": "Stores extraction results history."
     },
     "/users/{userId}/campaigns/{campaignId}": {
       "schema": {
         "$ref": "#/entities/Campaign"
       },
-      "description": "Stores a user's email campaigns."
-    },
-    "/users/{userId}/campaigns/{campaignId}/logs/{logId}": {
-      "schema": {
-        "$ref": "#/entities/EmailLog"
-      },
-      "description": "Stores individual delivery logs for a campaign."
+      "description": "Stores user campaigns."
     },
     "/users/{userId}/contactLists/{listId}": {
       "schema": { "type": "object" },

@@ -30,13 +30,14 @@ export async function signUp(auth: Auth, data: any) {
   const profileData = {
     displayName,
     email,
-    isAdmin: false, // Default to non-admin
+    isAdmin: false,
+    subscriptionTier: 'free',
+    createdAt: new Date().toISOString()
   };
   
   try {
     await setDoc(userDocRef, profileData, { merge: true });
   } catch (firestoreError) {
-    // If saving the profile fails, roll back the auth user creation.
     const permissionError = new FirestorePermissionError({
       path: userDocRef.path,
       operation: 'write',
@@ -72,12 +73,10 @@ export async function signInWithGoogle(auth: Auth) {
   const profileData = {
     displayName: user.displayName,
     email: user.email,
-    // Note: We don't overwrite isAdmin if it already exists, 
-    // but for new users it would ideally be handled or checked.
+    subscriptionTier: 'free' // Default for new Google users
   };
   
   try {
-    // merge: true preserves isAdmin if the document already exists
     await setDoc(userDocRef, profileData, { merge: true });
   } catch (firestoreError) {
     const permissionError = new FirestorePermissionError({

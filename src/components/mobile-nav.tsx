@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -9,12 +10,12 @@ import {
   Send,
   Settings,
   ShieldCheck,
+  CreditCard
 } from 'lucide-react';
 import { Icons } from '@/components/icons';
 import { cn } from '@/lib/utils';
-import { useDoc, useUser, useFirestore } from "@/firebase";
+import { useDoc, useUser, useFirestore, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
-import { useMemo } from "react";
 import { SheetClose } from '@/components/ui/sheet';
 
 const navLinks = [
@@ -22,6 +23,7 @@ const navLinks = [
   { href: '/extract', label: 'Extract Emails', icon: Mailbox },
   { href: '/contacts', label: 'Contacts', icon: Users },
   { href: '/campaigns', label: 'Campaigns', icon: Send },
+  { href: '/pricing', label: 'Elite Pricing', icon: CreditCard },
 ];
 
 export function MobileNav() {
@@ -29,7 +31,7 @@ export function MobileNav() {
   const { user } = useUser();
   const db = useFirestore();
 
-  const userProfileRef = useMemo(() => {
+  const userProfileRef = useMemoFirebase(() => {
     if (!db || !user) return null;
     return doc(db, "users", user.uid);
   }, [db, user]);
