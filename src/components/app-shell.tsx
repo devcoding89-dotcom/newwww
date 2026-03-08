@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Sidebar } from '@/components/sidebar';
@@ -10,22 +11,26 @@ import { MobileNav } from './mobile-nav';
 import { useGlobalLoading } from '@/hooks/use-global-loading';
 import { cn } from '@/lib/utils';
 import { UserNav } from './user-nav';
+import { useAuthGuard } from '@/hooks/use-auth-guard';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { isLoading, setIsLoading } = useGlobalLoading();
   const pathname = usePathname();
+  
+  // Enforce authentication on private routes
+  useAuthGuard();
 
-  // Trigger a long loading state on navigation to show the rolling "E"
+  // Trigger a loading state on navigation to show the rolling "E"
   useEffect(() => {
     setIsLoading(true);
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 2500); 
+    }, 1500); 
     return () => clearTimeout(timer);
   }, [pathname, setIsLoading]);
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-muted/40">
+    <div className="flex min-h-screen w-full flex-col bg-muted/40 font-body">
       <Sidebar />
       <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
@@ -63,7 +68,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="mt-8 sm:mt-12 flex flex-col items-center gap-2">
-            <p className="text-2xl sm:text-3xl font-bold text-primary animate-pulse tracking-widest">
+            <p className="text-2xl sm:text-3xl font-bold text-primary animate-pulse tracking-widest uppercase">
               EmailCraft
             </p>
             <p className="text-xs sm:text-sm text-muted-foreground uppercase tracking-[0.5em]">

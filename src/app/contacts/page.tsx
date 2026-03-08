@@ -1,12 +1,16 @@
+
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { PlusCircle, Upload } from "lucide-react";
+import { PlusCircle, Upload, Loader2 } from "lucide-react";
 import PageHeader from "@/components/page-header";
-import { useLocalStorage } from "@/hooks/use-local-storage";
 import type { ContactList, Contact } from "@/lib/types";
+import { useFirestore, useUser, useCollection } from "@/firebase";
+import { collection, query, orderBy, doc, addDoc, deleteDoc, updateDoc, writeBatch } from "firebase/firestore";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 import { ContactListControls } from "./components/contact-list-controls";
 import { ContactsTable } from "./components/contacts-table";
@@ -16,199 +20,204 @@ import { validateEmailAction } from "@/lib/actions";
 
 export default function ContactsPage() {
   const { toast } = useToast();
-  const [contactLists, setContactLists] = useLocalStorage<ContactList[]>("contact-lists", []);
+  const { user } = useUser();
+  const db = useFirestore();
+  
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
-
   const [isContactFormOpen, setIsContactFormOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
 
-  useEffect(() => {
-    // If no list is selected but lists exist, select the first one.
-    if (!selectedListId && contactLists.length > 0) {
-      setSelectedListId(contactLists[0].id);
-    }
-    // If the selected list was deleted, select a new one.
-    else if (selectedListId && !contactLists.some((list) => list.id === selectedListId)) {
-      setSelectedListId(contactLists.length > 0 ? contactLists[0].id : null);
-    }
-  }, [contactLists, selectedListId]);
+  const listsQuery = useMemo(() => {
+    if (!db || !user) return null;
+    return query(
+      collection(db, "users", user.uid, "contactLists"),
+      orderBy("createdAt", "desc")
+    );
+  }, [db, user]);
 
-  const selectedList = contactLists.find((list) => list.id === selectedListId);
+  const { data: contactLists, isLoading: listsLoading } = useCollection<any>(listsQuery);
 
-  const handleCreateList = (name: string) => {
-    const newList: ContactList = {
-      id: crypto.randomUUID(),
+  const contactsQuery = useMemo(() => {
+    if (!db || !user || !selectedListId) return null;
+    return query(
+      collection(db, "users", user.uid, "contacts"),
+      orderBy("createdAt", "desc")
+    );
+  }, [db, user, selectedListId]);
+
+  const { data: allContacts, isLoading: contactsLoading } = useCollection<Contact>(contactsQuery);
+
+  // Filter contacts by list ID
+  const selectedListContacts = useMemo(() => {
+    if (!selectedListId || !allContacts) return [];
+    const list = contactLists?.find(l => l.id === selectedListId);
+    if (!list) return [];
+    return allContacts.filter(c => list.contactIds?.includes(c.id));
+  }, [allContacts, selectedListId, contactLists]);
+
+  const handleCreateList = async (name: string) => {
+    if (!db || !user) return;
+    const listData = {
+      userId: user.uid,
       name,
-      contacts: [],
+      contactIds: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
-    const updatedLists = [...contactLists, newList];
-    setContactLists(updatedLists);
-    setSelectedListId(newList.id);
+    try {
+      const docRef = await addDoc(collection(db, "users", user.uid, "contactLists"), listData);
+      setSelectedListId(docRef.id);
+      toast({ title: "List Created", description: `"${name}" is ready.` });
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to create list." });
+    }
   };
 
-  const handleDeleteList = (id: string) => {
-    setContactLists(contactLists.filter(list => list.id !== id));
+  const handleDeleteList = async (id: string) => {
+    if (!db || !user) return;
+    try {
+      await deleteDoc(doc(db, "users", user.uid, "contactLists", id));
+      setSelectedListId(null);
+      toast({ title: "List Deleted" });
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to delete list." });
+    }
   };
   
-  const handleAddContact = (contact: Omit<Contact, "id">) => {
-    if (!selectedListId) return;
-    const newContact = { ...contact, id: crypto.randomUUID() };
-    const updatedLists = contactLists.map((list) =>
-      list.id === selectedListId
-        ? { ...list, contacts: [...list.contacts, newContact] }
-        : list
-    );
-    setContactLists(updatedLists);
-    setIsContactFormOpen(false);
-  };
-
-  const handleUpdateContact = (updatedContact: Contact) => {
-    if (!selectedListId) return;
-    const updatedLists = contactLists.map((list) =>
-      list.id === selectedListId
-        ? { ...list, contacts: list.contacts.map(c => c.id === updatedContact.id ? updatedContact : c) }
-        : list
-    );
-    setContactLists(updatedLists);
-    setEditingContact(null);
-    setIsContactFormOpen(false);
-  };
-
-  const handleDeleteContact = (contactId: string) => {
-    if (!selectedListId) return;
-    const updatedLists = contactLists.map((list) =>
-      list.id === selectedListId
-        ? { ...list, contacts: list.contacts.filter(c => c.id !== contactId) }
-        : list
-    );
-    setContactLists(updatedLists);
-  };
-
-  const handleImportCSV = async (file: File) => {
-    if (!selectedListId) {
-      toast({
-        variant: "destructive",
-        title: "No list selected",
-        description: "Please create or select a contact list first."
-      });
-      return;
-    }
+  const handleAddContact = async (contact: Omit<Contact, "id">) => {
+    if (!db || !user || !selectedListId) return;
     
-    const { id: toastId } = toast({
-      title: "Importing contacts...",
-      description: "Please wait while we validate and import your contacts. This may take a moment."
-    });
+    const contactData = {
+      ...contact,
+      userId: user.uid,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
 
     try {
-      const text = await file.text();
-      const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
-      
-      if (lines.length <= 1) {
-          toast({
-              id: toastId,
-              variant: "destructive",
-              title: "Import Failed",
-              description: "CSV file is empty or contains only headers.",
-          });
-          return;
+      const contactRef = await addDoc(collection(db, "users", user.uid, "contacts"), contactData);
+      const listRef = doc(db, "users", user.uid, "contactLists", selectedListId);
+      const list = contactLists?.find(l => l.id === selectedListId);
+      if (list) {
+        await updateDoc(listRef, {
+          contactIds: [...(list.contactIds || []), contactRef.id],
+          updatedAt: new Date().toISOString(),
+        });
       }
-
-      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, '').toLowerCase());
-      
-      const headerMap: { [key: string]: number } = {};
-      const contactKeys = ['email', 'firstname', 'first name', 'lastname', 'last name', 'company', 'position'];
-      headers.forEach((h, i) => {
-          if (contactKeys.includes(h)) {
-              if (h === 'first name') headerMap['firstname'] = i;
-              else if (h === 'last name') headerMap['lastname'] = i;
-              else headerMap[h] = i;
-          }
-      });
-      
-      if (headerMap['email'] === undefined) {
-          toast({
-              id: toastId,
-              variant: "destructive",
-              title: "Import Failed",
-              description: "CSV file must contain an 'email' column header.",
-          });
-          return;
-      }
-
-      const validContacts: Contact[] = [];
-      const invalidDetails: { email: string, reason: string }[] = [];
-      const contactRows = lines.slice(1);
-
-      for (const line of contactRows) {
-        const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
-        const email = values[headerMap['email']];
-        
-        if (!email) continue;
-        
-        const { isValid, reason } = await validateEmailAction(email);
-        
-        if (isValid) {
-          const contactData: Contact = {
-              id: crypto.randomUUID(),
-              email: email,
-              firstName: values[headerMap['firstname']] || '',
-              lastName: values[headerMap['lastname']] || '',
-              company: values[headerMap['company']] || '',
-              position: values[headerMap['position']] || '',
-              isValid: true,
-          };
-          validContacts.push(contactData);
-        } else {
-          invalidDetails.push({ email, reason });
-        }
-      }
-      
-      if (validContacts.length > 0) {
-          const updatedLists = contactLists.map(list => 
-              list.id === selectedListId ? { ...list, contacts: [...list.contacts, ...validContacts] } : list
-          );
-          setContactLists(updatedLists);
-      }
-      
-      let description = `${validContacts.length} contacts were successfully imported.`;
-      if (invalidDetails.length > 0) {
-          description += ` ${invalidDetails.length} contacts failed validation and were skipped.`;
-      }
-
-      toast({
-          id: toastId,
-          title: "Import Complete",
-          description: description,
-      });
-    } catch (error) {
-      toast({
-        id: toastId,
-        variant: 'destructive',
-        title: 'Import Error',
-        description: 'An unexpected error occurred during file processing.'
-      })
+      setIsContactFormOpen(false);
+      toast({ title: "Contact Added" });
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to add contact." });
     }
   };
-  
-  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+  const handleUpdateContact = async (updatedContact: Contact) => {
+    if (!db || !user) return;
+    const { id, ...data } = updatedContact;
+    try {
+      await updateDoc(doc(db, "users", user.uid, "contacts", id), {
+        ...data,
+        updatedAt: new Date().toISOString(),
+      });
+      setEditingContact(null);
+      setIsContactFormOpen(false);
+      toast({ title: "Contact Updated" });
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to update contact." });
+    }
+  };
+
+  const handleDeleteContact = async (contactId: string) => {
+    if (!db || !user || !selectedListId) return;
+    try {
+      // Remove from list associations first
+      const listRef = doc(db, "users", user.uid, "contactLists", selectedListId);
+      const list = contactLists?.find(l => l.id === selectedListId);
+      if (list) {
+        await updateDoc(listRef, {
+          contactIds: list.contactIds.filter((id: string) => id !== contactId),
+          updatedAt: new Date().toISOString(),
+        });
+      }
+      // Note: We keep the contact document in the master collection unless explicitly removed globally
+      toast({ title: "Contact Removed from List" });
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to remove contact." });
+    }
+  };
+
+  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!db || !user || !selectedListId) return;
     if (e.target.files && e.target.files[0]) {
-      handleImportCSV(e.target.files[0]);
-      e.target.value = ""; // Allow re-uploading the same file
+      const file = e.target.files[0];
+      const { id: toastId } = toast({
+        title: "Importing...",
+        description: "Validating contacts...",
+      });
+
+      try {
+        const text = await file.text();
+        const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+        if (lines.length <= 1) throw new Error("File is empty.");
+
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        const emailIdx = headers.indexOf('email');
+        if (emailIdx === -1) throw new Error("No 'email' column found.");
+
+        const batch = writeBatch(db);
+        const newContactIds: string[] = [];
+
+        for (const line of lines.slice(1)) {
+          const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+          const email = values[emailIdx];
+          if (!email) continue;
+
+          const contactRef = doc(collection(db, "users", user.uid, "contacts"));
+          batch.set(contactRef, {
+            email,
+            firstName: values[headers.indexOf('firstname')] || values[headers.indexOf('first name')] || '',
+            lastName: values[headers.indexOf('lastname')] || values[headers.indexOf('last name')] || '',
+            company: values[headers.indexOf('company')] || '',
+            position: values[headers.indexOf('position')] || '',
+            isValid: true,
+            userId: user.uid,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
+          newContactIds.push(contactRef.id);
+        }
+
+        await batch.commit();
+        
+        const listRef = doc(db, "users", user.uid, "contactLists", selectedListId);
+        const list = contactLists?.find(l => l.id === selectedListId);
+        if (list) {
+          await updateDoc(listRef, {
+            contactIds: [...(list.contactIds || []), ...newContactIds],
+            updatedAt: new Date().toISOString(),
+          });
+        }
+
+        toast({ id: toastId, title: "Import Complete", description: `Added ${newContactIds.length} contacts.` });
+      } catch (error: any) {
+        toast({ id: toastId, variant: "destructive", title: "Import Failed", description: error.message });
+      }
+      e.target.value = "";
     }
   };
 
   return (
     <div className="container mx-auto py-8">
       <PageHeader
-        title="Contact Lists"
-        description="Manage your contacts and organize them into lists."
+        title="Contact Intelligence"
+        description="Organize your recipients into high-performance segments."
       >
         <div className="flex items-center gap-2">
-           <Button size="sm" variant="outline" asChild>
-             <label htmlFor="csv-upload">
+           <Button size="sm" variant="outline" asChild disabled={!selectedListId}>
+             <label htmlFor="csv-upload" className="cursor-pointer">
                <Upload className="mr-2 h-4 w-4" />
                Import CSV
-               <input id="csv-upload" type="file" accept=".csv,.txt" className="sr-only" onChange={onFileChange} />
+               <input id="csv-upload" type="file" accept=".csv" className="sr-only" onChange={onFileChange} />
              </label>
            </Button>
           <Button
@@ -235,17 +244,28 @@ export default function ContactsPage() {
       <Card>
         <CardContent className="p-0">
           <div className="p-4 border-b">
-            <ContactListControls
-              lists={contactLists}
-              selectedListId={selectedListId}
-              onSelectList={setSelectedListId}
-              onCreateList={handleCreateList}
-              onDeleteList={handleDeleteList}
-            />
+            {listsLoading ? (
+              <div className="flex items-center gap-2 py-2">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <span className="text-sm text-muted-foreground">Loading lists...</span>
+              </div>
+            ) : (
+              <ContactListControls
+                lists={contactLists || []}
+                selectedListId={selectedListId}
+                onSelectList={setSelectedListId}
+                onCreateList={handleCreateList}
+                onDeleteList={handleDeleteList}
+              />
+            )}
           </div>
-          {selectedList ? (
+          {contactsLoading ? (
+            <div className="flex h-[200px] items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : selectedListId ? (
             <ContactsTable 
-              contacts={selectedList.contacts} 
+              contacts={selectedListContacts} 
               onEdit={(contact) => {
                 setEditingContact(contact);
                 setIsContactFormOpen(true);
@@ -253,9 +273,10 @@ export default function ContactsPage() {
               onDelete={handleDeleteContact}
             />
           ) : (
-            <div className="p-8 text-center text-muted-foreground">
-              <p>No contact list selected.</p>
-              <p className="text-sm">Create a new list to get started.</p>
+            <div className="p-12 text-center text-muted-foreground">
+              <PlusCircle className="h-12 w-12 mx-auto mb-4 opacity-20" />
+              <h3 className="text-lg font-semibold">No List Selected</h3>
+              <p className="text-sm">Select an existing list or create a new one to manage contacts.</p>
             </div>
           )}
         </CardContent>
