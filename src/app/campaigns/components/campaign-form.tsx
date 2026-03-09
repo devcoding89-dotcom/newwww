@@ -175,10 +175,9 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
     }
   };
 
-  async function onSubmit(values: CampaignFormData) {
-    if (!db || !user) return;
+  async function saveCampaign(values: CampaignFormData) {
+    if (!db || !user) return null;
     
-    setIsLoading(true);
     const id = campaignId || crypto.randomUUID();
     const docRef = doc(db, "users", user.uid, "campaigns", id);
 
@@ -193,33 +192,42 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
       createdAt: campaignData?.createdAt || new Date().toISOString(),
     };
 
-    setDoc(docRef, data, { merge: true })
-      .then(() => {
+    try {
+      await setDoc(docRef, data, { merge: true });
+      return { id, docRef, data };
+    } catch (error) {
+      const permissionError = new FirestorePermissionError({
+        path: docRef.path,
+        operation: "write",
+        requestResourceData: data,
+      });
+      errorEmitter.emit("permission-error", permissionError);
+      throw error;
+    }
+  }
+
+  async function onSubmit(values: CampaignFormData) {
+    setIsLoading(true);
+    try {
+      const result = await saveCampaign(values);
+      if (result) {
         toast({ title: campaignId ? "Campaign Updated" : "Campaign Saved as Draft" });
         if (!campaignId) {
-          router.push(`/campaigns/${id}/edit`);
+          router.push(`/campaigns/${result.id}/edit`);
         }
-      })
-      .catch(async () => {
-        const permissionError = new FirestorePermissionError({
-          path: docRef.path,
-          operation: "write",
-          requestResourceData: data,
-        });
-        errorEmitter.emit("permission-error", permissionError);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
+      }
+    } catch (e) {
+      // Error handled in saveCampaign
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   const handleDispatch = async () => {
-    if (!campaignRef || !campaignData || !user || !db) return;
-    
-    const selectedList = contactLists?.find(cl => cl.id === campaignData.contactListId);
-    if (!selectedList || !selectedList.contactIds || selectedList.contactIds.length === 0) {
-      toast({ variant: "destructive", title: "Empty Contact List", description: "No contacts to send to." });
-      return;
+    const values = form.getValues();
+    if (!values.contactListId || !user || !db) {
+       toast({ variant: "destructive", title: "Missing Information", description: "Select a recipient list first." });
+       return;
     }
 
     if (!sender.isDomainVerified) {
@@ -227,56 +235,80 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
       return;
     }
 
-    // Mark as sending
-    await updateDoc(campaignRef, {
-      status: "sending",
-      sentCount: 0,
-      failedCount: 0,
-      totalCount: selectedList.contactIds.length,
-      updatedAt: serverTimestamp(),
-    });
+    const selectedList = contactLists?.find(cl => cl.id === values.contactListId);
+    if (!selectedList || !selectedList.contactIds || selectedList.contactIds.length === 0) {
+      toast({ variant: "destructive", title: "Empty Contact List", description: "The selected list contains no verified contacts." });
+      return;
+    }
 
-    const contactIds = selectedList.contactIds;
-    let totalSent = 0;
-    let totalFailed = 0;
+    setIsLoading(true);
+    try {
+      // 1. Save the campaign first to ensure we have an ID and current content
+      const saveResult = await saveCampaign(values);
+      if (!saveResult) return;
 
-    // Process using Server Actions
-    const BATCH_SIZE = 10;
-    for (let i = 0; i < contactIds.length; i += BATCH_SIZE) {
-      const currentBatchIds = contactIds.slice(i, i + BATCH_SIZE);
-      const batch = writeBatch(db);
-      
-      const contactsSnap = await getDocs(query(
-        collection(db, "users", user.uid, "contacts"),
-        where("__name__", "in", currentBatchIds)
-      ));
+      const activeCampaignId = saveResult.id;
+      const activeCampaignRef = saveResult.docRef;
 
-      for (const docSnap of contactsSnap.docs) {
-        const contact = docSnap.data() as Contact;
-        const logData = await dispatchEmailAction(contact, campaignData);
-        
-        const logRef = doc(collection(db, "users", user.uid, "campaigns", campaignId!, "logs"));
-        batch.set(logRef, logData);
-        
-        if (logData.status === 'delivered') totalSent++; else totalFailed++;
-      }
-
-      batch.update(campaignRef, {
-        sentCount: totalSent,
-        failedCount: totalFailed,
+      // 2. Mark as sending
+      await updateDoc(activeCampaignRef, {
+        status: "sending",
+        sentCount: 0,
+        failedCount: 0,
+        totalCount: selectedList.contactIds.length,
         updatedAt: serverTimestamp(),
       });
 
-      await batch.commit();
-      await new Promise(r => setTimeout(r, 800)); // Smooth progress updates
+      const contactIds = selectedList.contactIds;
+      let totalSent = 0;
+      let totalFailed = 0;
+
+      // 3. Process using Server Actions
+      const BATCH_SIZE = 10;
+      for (let i = 0; i < contactIds.length; i += BATCH_SIZE) {
+        const currentBatchIds = contactIds.slice(i, i + BATCH_SIZE);
+        const batch = writeBatch(db);
+        
+        const contactsSnap = await getDocs(query(
+          collection(db, "users", user.uid, "contacts"),
+          where("__name__", "in", currentBatchIds)
+        ));
+
+        for (const docSnap of contactsSnap.docs) {
+          const contact = docSnap.data() as Contact;
+          const logData = await dispatchEmailAction(contact, saveResult.data);
+          
+          const logRef = doc(collection(db, "users", user.uid, "campaigns", activeCampaignId, "logs"));
+          batch.set(logRef, logData);
+          
+          if (logData.status === 'delivered') totalSent++; else totalFailed++;
+        }
+
+        batch.update(activeCampaignRef, {
+          sentCount: totalSent,
+          failedCount: totalFailed,
+          updatedAt: serverTimestamp(),
+        });
+
+        await batch.commit();
+        await new Promise(r => setTimeout(r, 800)); // Smooth progress updates
+      }
+
+      await updateDoc(activeCampaignRef, {
+        status: "completed",
+        updatedAt: serverTimestamp(),
+      });
+
+      toast({ title: "Dispatch Complete!", description: `Successfully processed ${contactIds.length} recipients.` });
+      
+      if (!campaignId) {
+        router.push(`/campaigns/${activeCampaignId}/edit`);
+      }
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Launch Failed", description: e.message });
+    } finally {
+      setIsLoading(false);
     }
-
-    await updateDoc(campaignRef, {
-      status: "completed",
-      updatedAt: serverTimestamp(),
-    });
-
-    toast({ title: "Dispatch Complete!", description: `Successfully processed ${contactIds.length} recipients.` });
   };
 
   const selectedList = useMemo(() => 
@@ -572,8 +604,8 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
                     <Button
                       type="button"
                       onClick={handleDispatch}
-                      className="w-full h-12 text-lg font-bold"
-                      disabled={!campaignId || !form.getValues().contactListId || !sender.isDomainVerified || isSending}
+                      className="w-full h-12 text-lg font-bold shadow-lg shadow-primary/10"
+                      disabled={!form.watch("contactListId") || !sender.isDomainVerified || isSending}
                     >
                       <Rocket className="mr-2 h-5 w-5" />
                       Launch Campaign
