@@ -17,7 +17,7 @@ import dns from "dns/promises";
 
 // Securely retrieve API keys from environment variables
 const BREVO_API_KEY = process.env.BREVO_API_KEY || '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';
-const VALIDATION_KEY = process.env.ABSTRACT_API_KEY || '69c9b78b0150477db4ccf5374edd4705';
+const ABSTRACT_API_KEY = process.env.ABSTRACT_API_KEY || '69c9b78b0150477db4ccf5374edd4705';
 
 const PUBLIC_DOMAINS = [
   "gmail.com", "yahoo.com", "outlook.com", "hotmail.com", 
@@ -75,17 +75,11 @@ export async function validateEmailAction(
   try {
     // Attempt high-precision validation via API
     const response = await fetch(
-      `https://emailvalidation.abstractapi.com/v1/?api_key=${VALIDATION_KEY}&email=${email}`
+      `https://emailvalidation.abstractapi.com/v1/?api_key=${ABSTRACT_API_KEY}&email=${email}`
     );
 
     if (!response.ok) {
-        // Fallback to DNS check if API fails or quota exceeded
-        const domain = email.split("@")[1];
-        const records = await dns.resolveMx(domain);
-        if (records && records.length > 0) {
-            return { isValid: true, reason: "" };
-        }
-        return { isValid: false, reason: "No MX records found for domain" };
+        throw new Error('API request failed');
     }
 
     const data = await response.json();
@@ -96,7 +90,7 @@ export async function validateEmailAction(
         reason: isValid ? "" : `Mailbox status: ${data.deliverability || 'Undeliverable'}` 
     };
   } catch (error: any) {
-    // Final fallback to native DNS if fetch fails entirely
+    // Fallback to DNS check if API fails or quota exceeded
     try {
         const domain = email.split("@")[1];
         const records = await dns.resolveMx(domain);

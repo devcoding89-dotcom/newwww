@@ -49,10 +49,10 @@ export default function ContactsPage() {
 
   // Filter contacts by list ID
   const selectedListContacts = useMemo(() => {
-    if (!selectedListId || !allContacts) return [];
-    const list = contactLists?.find(l => l.id === selectedListId);
-    if (!list) return [];
-    return allContacts.filter(c => list.contactIds?.includes(c.id));
+    if (!selectedListId || !allContacts || !contactLists) return [];
+    const list = contactLists.find(l => l.id === selectedListId);
+    if (!list || !list.contactIds) return [];
+    return allContacts.filter(c => list.contactIds.includes(c.id));
   }, [allContacts, selectedListId, contactLists]);
 
   const handleCreateList = async (name: string) => {
@@ -147,26 +147,34 @@ export default function ContactsPage() {
   const handleBulkVerify = async () => {
     if (!db || !user || selectedListContacts.length === 0) return;
     setIsVerifying(true);
-    const { id: toastId } = toast({ title: "Verifying List", description: "Checking MX records..." });
+    const { id: toastId } = toast({ title: "Verifying List", description: "Initializing validation sequence..." });
 
     try {
       const batch = writeBatch(db);
-      let count = 0;
+      let successCount = 0;
+      let failCount = 0;
       
       for (const contact of selectedListContacts) {
-        if (contact.isValid) continue;
+        // Run validation for everyone to ensure full list accuracy
         const validation = await validateEmailAction(contact.email);
-        if (validation.isValid) {
-          const contactRef = doc(db, "users", user.uid, "contacts", contact.id);
-          batch.update(contactRef, { isValid: true, updatedAt: new Date().toISOString() });
-          count++;
-        }
+        const contactRef = doc(db, "users", user.uid, "contacts", contact.id);
+        
+        batch.update(contactRef, { 
+          isValid: validation.isValid, 
+          updatedAt: new Date().toISOString() 
+        });
+
+        if (validation.isValid) successCount++; else failCount++;
       }
 
       await batch.commit();
-      toast({ id: toastId, title: "Verification Complete", description: `Successfully verified ${count} contacts.` });
+      toast({ 
+        id: toastId, 
+        title: "Verification Complete", 
+        description: `Verified ${successCount} leads. ${failCount} failed deliverability check.` 
+      });
     } catch (e) {
-      toast({ id: toastId, variant: "destructive", title: "Verification Failed" });
+      toast({ id: toastId, variant: "destructive", title: "Verification Failed", description: "Could not complete bulk check." });
     } finally {
       setIsVerifying(false);
     }
@@ -215,7 +223,7 @@ export default function ContactsPage() {
             lastName: lnIdx !== -1 ? clean(values[lnIdx]) : "",
             company: coIdx !== -1 ? clean(values[coIdx]) : "",
             position: posIdx !== -1 ? clean(values[posIdx]) : "",
-            isValid: true, // Auto-mark valid for clean imports, usually verified on dispatch
+            isValid: false, // Default to false so user can verify
             userId: user.uid,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -240,7 +248,7 @@ export default function ContactsPage() {
               updatedAt: new Date().toISOString(),
             });
           }
-          toast({ id: toastId, title: "Import Successful", description: `Added ${newContactIds.length} new contacts.` });
+          toast({ id: toastId, title: "Import Successful", description: `Added ${newContactIds.length} new leads. Click "Verify All" to clean the list.` });
         }
       } catch (error: any) {
         toast({ id: toastId, variant: "destructive", title: "Import Failed", description: error.message });
