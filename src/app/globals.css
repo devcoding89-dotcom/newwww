@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -54,6 +55,24 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased selection:bg-primary/10 selection:text-primary;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Horizontal scroll for tables on mobile */
+  .table-scroll {
+    @apply overflow-x-auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Improve touch targets for form inputs on mobile */
+  input, select, textarea, button {
+    @apply touch-manipulation;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
   }
 }

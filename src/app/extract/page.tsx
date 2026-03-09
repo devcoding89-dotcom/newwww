@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useActionState, useState, useMemo } from "react";
@@ -181,7 +182,6 @@ export default function ExtractPage() {
   const handleLoadSnapshot = (snapshot: any) => {
     setText(snapshot.text);
     toast({ title: "Snapshot Loaded" });
-    // Scroll to top on mobile to see the loaded text
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -251,7 +251,7 @@ export default function ExtractPage() {
         description="Paste raw data or upload files to identify unique leads using AI."
       >
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
+          <Button variant="outline" size="sm" asChild className="w-full sm:w-auto h-11 sm:h-9">
             <label htmlFor="file-upload" className="cursor-pointer">
               <Upload className="mr-2 h-4 w-4" />
               Upload File
@@ -262,11 +262,11 @@ export default function ExtractPage() {
       </PageHeader>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          <Card className="border-border/50">
+        <div className="space-y-6 lg:col-span-2 order-1 lg:order-1">
+          <Card className="border-border/50 shadow-sm">
             <CardHeader>
               <CardTitle className="text-xl">Source Data</CardTitle>
-              <CardDescription>Input raw text for intelligent context-aware extraction.</CardDescription>
+              <CardDescription>Input raw text for context-aware extraction.</CardDescription>
             </CardHeader>
             <CardContent>
               <form action={formAction}>
@@ -274,24 +274,24 @@ export default function ExtractPage() {
                   <Textarea
                     name="text"
                     placeholder="Paste email signatures, LinkedIn profiles, or mixed text blocks here..."
-                    className="min-h-[250px] sm:min-h-[350px] resize-y bg-muted/20 focus:bg-background transition-colors"
+                    className="min-h-[250px] sm:min-h-[350px] resize-y bg-muted/20 focus:bg-background transition-colors text-sm"
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                   />
-                  <Button type="submit" disabled={isPending || !text.trim()} className="w-full h-12 text-base font-bold">
+                  <Button type="submit" disabled={isPending || !text.trim()} className="w-full h-12 text-base font-bold shadow-lg shadow-primary/10">
                     {isPending ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
                       <Sparkles className="mr-2 h-4 w-4" />
                     )}
-                    {isPending ? "Processing Context..." : "Start AI Extraction"}
+                    {isPending ? "Processing..." : "Start AI Extraction"}
                   </Button>
                 </div>
               </form>
             </CardContent>
           </Card>
 
-          <Card className="border-border/50">
+          <Card className="border-border/50 shadow-sm">
             <CardHeader>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
@@ -299,17 +299,17 @@ export default function ExtractPage() {
                   <CardTitle className="text-xl">History</CardTitle>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2">
-                  <div className="relative">
+                  <div className="relative flex-1">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Search history..."
-                      className="pl-9 w-full sm:w-[200px]"
+                      placeholder="Search..."
+                      className="pl-9 w-full sm:w-[200px] h-10"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
                   <Select value={dateFilter} onValueChange={setDateFilter}>
-                    <SelectTrigger className="w-full sm:w-[130px]">
+                    <SelectTrigger className="w-full sm:w-[130px] h-10">
                       <SelectValue placeholder="All Time" />
                     </SelectTrigger>
                     <SelectContent>
@@ -327,76 +327,78 @@ export default function ExtractPage() {
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
               ) : filteredSnapshots.length > 0 ? (
-                <div className="rounded-md border border-border/50 overflow-hidden">
-                  <Table>
-                    <TableHeader className="bg-muted/50">
-                      <TableRow>
-                        <TableHead className="font-bold">Title</TableHead>
-                        <TableHead className="hidden sm:table-cell font-bold">Leads</TableHead>
-                        <TableHead className="text-right font-bold">Action</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredSnapshots.map((snapshot: any) => (
-                        <TableRow key={snapshot.id} className="cursor-pointer hover:bg-muted/50 group" onClick={() => handleLoadSnapshot(snapshot)}>
-                          <TableCell className="font-medium truncate max-w-[150px] sm:max-w-none">
-                            {snapshot.title}
-                            <p className="sm:hidden text-[10px] text-muted-foreground">
-                              {snapshot.emails?.length || 0} leads found
-                            </p>
-                          </TableCell>
-                          <TableCell className="hidden sm:table-cell">
-                            <Badge variant="secondary" className="font-mono">{snapshot.emails?.length || 0}</Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button variant="ghost" size="icon" className="hover:text-destructive" onClick={(e) => { e.stopPropagation(); handleDeleteSnapshot(snapshot.id); }}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
+                <div className="rounded-md border border-border/50 overflow-hidden mx-4 sm:mx-0">
+                  <div className="overflow-x-auto -webkit-overflow-scrolling-touch">
+                    <Table>
+                      <TableHeader className="bg-muted/50">
+                        <TableRow>
+                          <TableHead className="font-bold min-w-[150px]">Title</TableHead>
+                          <TableHead className="hidden sm:table-cell font-bold">Leads</TableHead>
+                          <TableHead className="text-right font-bold">Action</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredSnapshots.map((snapshot: any) => (
+                          <TableRow key={snapshot.id} className="cursor-pointer hover:bg-muted/50 group" onClick={() => handleLoadSnapshot(snapshot)}>
+                            <TableCell className="font-medium">
+                              <div className="truncate max-w-[140px] sm:max-w-xs">{snapshot.title}</div>
+                              <p className="sm:hidden text-[10px] text-muted-foreground mt-0.5">
+                                {snapshot.emails?.length || 0} leads identified
+                              </p>
+                            </TableCell>
+                            <TableCell className="hidden sm:table-cell">
+                              <Badge variant="secondary" className="font-mono">{snapshot.emails?.length || 0}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="icon" className="hover:text-destructive h-8 w-8" onClick={(e) => { e.stopPropagation(); handleDeleteSnapshot(snapshot.id); }}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               ) : (
-                <div className="p-12 text-center text-muted-foreground border border-dashed rounded-xl">
-                  <History className="h-10 w-10 mx-auto mb-4 opacity-20" />
-                  <p className="font-medium">No extraction history yet.</p>
-                  <p className="text-xs">Your successful AI extractions will appear here.</p>
+                <div className="p-12 text-center text-muted-foreground border border-dashed rounded-xl mx-4 sm:mx-0 bg-muted/5">
+                  <History className="h-10 w-10 mx-auto mb-4 opacity-10" />
+                  <p className="font-medium">No history yet.</p>
+                  <p className="text-xs">Your successful extractions will appear here.</p>
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
 
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 order-2 lg:order-2">
           <Card className="lg:sticky lg:top-20 border-primary/20 shadow-lg shadow-primary/5">
             <CardHeader className="flex flex-row items-center justify-between">
               <div className="flex items-center gap-2">
                 <CardTitle className="text-xl">Leads Found</CardTitle>
-                {state?.contacts && <Badge variant="primary" className="font-mono">{state.contacts.length}</Badge>}
+                {state?.contacts && <Badge variant="default" className="font-mono">{state.contacts.length}</Badge>}
               </div>
               {state?.contacts && state.contacts.length > 0 && (
-                <Button variant="ghost" size="icon" onClick={handleExportCSV} title="Download CSV">
+                <Button variant="ghost" size="icon" onClick={handleExportCSV} title="Download CSV" className="h-8 w-8">
                   <Download className="h-4 w-4" />
                 </Button>
               )}
             </CardHeader>
             <CardContent className="space-y-4">
               {isPending ? (
-                <div className="flex h-[350px] flex-col items-center justify-center gap-6 text-center animate-pulse">
+                <div className="flex h-[300px] flex-col items-center justify-center gap-6 text-center animate-pulse py-12">
                   <div className="relative">
                      <Loader2 className="h-16 w-16 animate-spin text-primary opacity-20" />
                      <Sparkles className="h-8 w-8 text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                   </div>
                   <div className="space-y-2">
                     <p className="text-lg font-black tracking-tight">AI is Analyzing</p>
-                    <p className="text-xs text-muted-foreground uppercase tracking-widest">Identifying roles & emails...</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Identifying roles & emails...</p>
                   </div>
                 </div>
               ) : state?.contacts ? (
                 <>
-                  <div className="h-[300px] sm:h-[400px] overflow-auto rounded-xl border border-border/50 bg-muted/10">
+                  <div className="h-[250px] sm:h-[400px] overflow-auto rounded-xl border border-border/50 bg-muted/10 -webkit-overflow-scrolling-touch">
                     <Table>
                       <TableHeader className="bg-muted/50 sticky top-0 z-10">
                         <TableRow>
@@ -408,12 +410,12 @@ export default function ExtractPage() {
                         {state.contacts.map((contact, index) => (
                           <TableRow key={index} className="text-[11px] group">
                             <TableCell className="py-2">
-                              <div className="font-bold truncate max-w-[120px]">{contact.firstName} {contact.lastName}</div>
-                              <div className="text-muted-foreground truncate max-w-[120px] font-mono">{contact.email}</div>
+                              <div className="font-bold truncate max-w-[110px] sm:max-w-[150px]">{contact.firstName} {contact.lastName}</div>
+                              <div className="text-muted-foreground truncate max-w-[110px] sm:max-w-[150px] font-mono">{contact.email}</div>
                             </TableCell>
                             <TableCell className="py-2">
-                              <div className="font-medium truncate max-w-[100px]">{contact.company}</div>
-                              <div className="text-muted-foreground truncate max-w-[100px] uppercase text-[9px]">{contact.position}</div>
+                              <div className="font-medium truncate max-w-[90px] sm:max-w-[120px]">{contact.company}</div>
+                              <div className="text-muted-foreground truncate max-w-[90px] sm:max-w-[120px] uppercase text-[9px]">{contact.position}</div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -426,23 +428,23 @@ export default function ExtractPage() {
                         placeholder="Snapshot name..." 
                         value={snapshotTitle}
                         onChange={(e) => setSnapshotTitle(e.target.value)}
-                        className="flex-1 h-10"
+                        className="flex-1 h-11"
                       />
-                      <Button variant="secondary" size="icon" className="h-10 w-10 shrink-0" onClick={handleSaveSnapshot}>
+                      <Button variant="secondary" size="icon" className="h-11 w-11 shrink-0" onClick={handleSaveSnapshot}>
                         <Save className="h-4 w-4" />
                       </Button>
                     </div>
                     <Button className="w-full h-12 text-base font-black shadow-lg shadow-primary/20" onClick={handleCreateCampaign}>
                       <Send className="mr-2 h-4 w-4" />
-                      Dispatch Campaign
+                      Launch Outreach
                     </Button>
                   </div>
                 </>
               ) : (
-                <div className="flex h-[350px] flex-col items-center justify-center text-center p-8 border border-dashed rounded-2xl bg-muted/5 opacity-50">
+                <div className="flex h-[250px] sm:h-[350px] flex-col items-center justify-center text-center p-8 border border-dashed rounded-2xl bg-muted/5 opacity-50">
                   <FileSpreadsheet className="h-12 w-12 mb-6 text-primary/30" />
-                  <p className="text-sm font-medium mb-1">Waiting for Context</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">Paste your raw data in the editor to start the AI extraction process.</p>
+                  <p className="text-sm font-medium mb-1">Waiting for Data</p>
+                  <p className="text-[10px] text-muted-foreground leading-relaxed">Paste your raw context in the editor to start the AI extraction process.</p>
                 </div>
               )}
             </CardContent>

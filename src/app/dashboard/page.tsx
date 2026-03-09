@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo } from "react";
@@ -72,9 +73,9 @@ export default function DashboardPage() {
   ], [stats]);
 
   const performanceData = useMemo(() => {
-    if (!campaigns) return [];
+    if (!campaigns || campaigns.length === 0) return [];
     return campaigns.slice(0, 7).reverse().map(c => ({
-      name: c.name.substring(0, 10),
+      name: c.name.length > 10 ? c.name.substring(0, 8) + ".." : c.name,
       delivered: c.sentCount || 0,
       failed: c.failedCount || 0,
     }));
@@ -97,14 +98,15 @@ export default function DashboardPage() {
   const isElite = profile?.subscriptionTier === "elite";
 
   return (
-    <div className="container mx-auto py-4 sm:py-8 max-w-7xl">
+    <div className="container mx-auto py-4 sm:py-8 max-w-7xl px-4 sm:px-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <PageHeader
           title="Studio Insights"
           description={`Welcome back, ${user?.displayName || 'User'}. Tracking ${campaigns?.length || 0} active campaigns.`}
+          className="mb-0"
         />
         {!isElite && (
-          <Button variant="outline" className="border-amber-500 text-amber-600 hover:bg-amber-50" asChild>
+          <Button variant="outline" className="w-full sm:w-auto border-amber-500 text-amber-600 hover:bg-amber-50" asChild>
              <Link href="/pricing">
                <Sparkles className="mr-2 h-4 w-4" /> Upgrade to Elite
              </Link>
@@ -139,16 +141,16 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="grid gap-6 grid-cols-1 lg:grid-cols-12">
-        <Card className="lg:col-span-8">
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-12 mb-8">
+        <Card className="lg:col-span-8 order-2 lg:order-1">
           <CardHeader>
             <div className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-primary" />
               <CardTitle>Delivery Performance</CardTitle>
             </div>
-            <CardDescription>Outcome tracking across your recent Nigerian outreach batches.</CardDescription>
+            <CardDescription>Outcome tracking across recent outreach batches.</CardDescription>
           </CardHeader>
-          <CardContent className="h-[350px] pt-4">
+          <CardContent className="h-[250px] sm:h-[350px] pt-4">
              <ChartContainer config={chartConfig}>
               <BarChart data={performanceData}>
                 <XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} />
@@ -161,15 +163,15 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-4">
+        <Card className="lg:col-span-4 order-1 lg:order-2">
           <CardHeader>
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-primary" />
               <CardTitle>List Health</CardTitle>
             </div>
-            <CardDescription>Overall database verification status.</CardDescription>
+            <CardDescription>Database verification status.</CardDescription>
           </CardHeader>
-          <CardContent className="h-[350px] pt-4">
+          <CardContent className="h-[200px] sm:h-[350px] pt-4">
             <ChartContainer config={chartConfig}>
               <BarChart data={chartData} layout="vertical">
                 <XAxis type="number" hide />
@@ -185,7 +187,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-12">
+        <Card className="lg:col-span-12 order-3">
           <CardHeader>
             <div className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5 text-primary" />
@@ -193,7 +195,7 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4 pt-0">
-             <div className="grid gap-4 md:grid-cols-3">
+             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                {campaigns?.slice(0, 3).map(c => (
                  <div key={c.id} className="p-4 rounded-xl border bg-muted/20 flex flex-col gap-2">
                     <div className="flex justify-between items-start">
@@ -208,7 +210,9 @@ export default function DashboardPage() {
                  </div>
                ))}
                {campaigns?.length === 0 && (
-                 <p className="col-span-3 text-center py-8 text-sm text-muted-foreground">No outreach activity recorded yet.</p>
+                 <p className="col-span-full text-center py-12 text-sm text-muted-foreground border border-dashed rounded-xl bg-muted/5">
+                   No outreach activity recorded yet.
+                 </p>
                )}
              </div>
           </CardContent>
@@ -220,14 +224,14 @@ export default function DashboardPage() {
 
 function StatCard({ title, value, label, icon, className }: { title: string; value: string; label: string; icon: React.ReactNode; className?: string }) {
   return (
-    <Card className="overflow-hidden border-border/50">
+    <Card className="overflow-hidden border-border/50 shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         {icon}
       </CardHeader>
       <CardContent>
         <div className={cn("text-2xl font-black", className)}>{value}</div>
-        <p className="text-[10px] text-muted-foreground uppercase tracking-tight mt-1">{label}</p>
+        <p className="text-[10px] text-muted-foreground uppercase tracking-tight mt-1 truncate">{label}</p>
       </CardContent>
     </Card>
   );

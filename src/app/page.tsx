@@ -42,7 +42,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen overflow-x-hidden">
       {/* Hero Section */}
       <section className="relative overflow-hidden pt-12 pb-16 sm:pt-20 sm:pb-24 lg:pt-32 lg:pb-32 px-4">
         <div className="container mx-auto text-center">
@@ -50,16 +50,16 @@ export default function LandingPage() {
             <Sparkles className="h-4 w-4 text-primary" />
             <span>Trusted by 15,000+ Nigerian Professionals</span>
           </div>
-          <h1 className="text-4xl font-black tracking-tighter sm:text-6xl lg:text-8xl mb-6 leading-[1.1]">
+          <h1 className="text-3xl font-black tracking-tighter sm:text-6xl lg:text-8xl mb-6 leading-[1.1] text-foreground">
             Extract Leads. <span className="text-primary">Verify </span> Accuracy. <br className="hidden sm:block" />
             <span className="text-accent">Personalize</span> at Scale.
           </h1>
-          <p className="mx-auto max-w-2xl text-base text-muted-foreground sm:text-xl mb-10 px-2">
+          <p className="mx-auto max-w-2xl text-base text-muted-foreground sm:text-xl mb-10 px-2 leading-relaxed">
             The #1 AI outreach tool for Nigerian studios. Identify prospects from raw text, 
             verify deliverability locally, and launch hyper-personalized campaigns in seconds.
           </p>
-          <div className="flex flex-col sm:flex-row justify-center gap-4 px-4 sm:px-0">
-            <Button size="lg" className="h-14 px-8 text-lg font-bold w-full sm:w-auto" onClick={() => handleCtaClick("/signup")}>
+          <div className="flex flex-col sm:flex-row justify-center gap-4 px-4 sm:px-0 max-w-md mx-auto sm:max-w-none">
+            <Button size="lg" className="h-14 px-8 text-lg font-bold w-full sm:w-auto shadow-lg shadow-primary/20" onClick={() => handleCtaClick("/signup")}>
               Create Free Account <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
             <Button size="lg" variant="outline" className="h-14 px-8 text-lg w-full sm:w-auto" asChild>
@@ -67,29 +67,29 @@ export default function LandingPage() {
             </Button>
           </div>
           
-          <div className="mt-16 flex justify-center items-center gap-8 grayscale opacity-50 overflow-hidden py-4">
-             <div className="font-black text-xl italic tracking-tighter">LAGOS.AI</div>
-             <div className="font-black text-xl italic tracking-tighter">STUDIO.HUB</div>
-             <div className="font-black text-xl italic tracking-tighter">OUTREACH.NG</div>
-             <div className="font-black text-xl italic tracking-tighter">SALES.LEADS</div>
+          <div className="mt-16 flex flex-wrap justify-center items-center gap-6 sm:gap-12 grayscale opacity-40 overflow-hidden py-4">
+             <div className="font-black text-lg sm:text-xl italic tracking-tighter">LAGOS.AI</div>
+             <div className="font-black text-lg sm:text-xl italic tracking-tighter">STUDIO.HUB</div>
+             <div className="font-black text-lg sm:text-xl italic tracking-tighter">OUTREACH.NG</div>
+             <div className="font-black text-lg sm:text-xl italic tracking-tighter">SALES.LEADS</div>
           </div>
         </div>
         
         {/* Background Gradients */}
         <div className="absolute top-0 -z-10 h-full w-full opacity-30 dark:opacity-20 pointer-events-none">
-          <div className="absolute top-1/2 left-1/4 h-[500px] w-[500px] -translate-y-1/2 rounded-full bg-primary blur-[120px]" />
-          <div className="absolute top-1/3 right-1/4 h-[400px] w-[400px] -translate-y-1/2 rounded-full bg-accent blur-[120px]" />
+          <div className="absolute top-1/2 left-1/4 h-[300px] w-[300px] sm:h-[500px] sm:w-[500px] -translate-y-1/2 rounded-full bg-primary blur-[100px] sm:blur-[120px]" />
+          <div className="absolute top-1/3 right-1/4 h-[250px] w-[250px] sm:h-[400px] sm:w-[400px] -translate-y-1/2 rounded-full bg-accent blur-[100px] sm:blur-[120px]" />
         </div>
       </section>
 
       {/* How It Works Section */}
-      <section className="py-20 bg-muted/20">
+      <section className="py-16 sm:py-24 bg-muted/20">
         <div className="container mx-auto px-4 text-center">
-          <div className="mb-16">
-            <h2 className="text-3xl font-bold sm:text-5xl mb-4 tracking-tight uppercase tracking-widest">How It Works</h2>
-            <p className="text-lg text-muted-foreground max-w-xl mx-auto">From raw data to delivered messages in 4 simple steps.</p>
+          <div className="mb-12 sm:mb-16">
+            <h2 className="text-2xl font-bold sm:text-5xl mb-4 tracking-tight uppercase tracking-widest">How It Works</h2>
+            <p className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto px-4">From raw data to delivered messages in 4 simple steps.</p>
           </div>
-          <div className="grid gap-8 md:grid-cols-4 relative">
+          <div className="grid gap-6 sm:gap-8 md:grid-cols-4 relative">
              <Step number="01" icon={<Search className="h-6 w-6" />} title="Extract" description="Paste raw text or LinkedIn bios. AI extracts names, roles, and emails." />
              <Step number="02" icon={<ShieldCheck className="h-6 w-6" />} title="Clean" description="Automatic MX record checks ensure every address is valid in Nigeria." />
              <Step number="03" icon={<Sparkles className="h-6 w-6" />} title="Craft" description="AI drafts personalized subject lines and body content using recipient tokens." />
@@ -99,35 +99,35 @@ export default function LandingPage() {
       </section>
 
       {/* Statistics Section */}
-      <section className="py-24 bg-primary text-primary-foreground">
+      <section className="py-16 sm:py-24 bg-primary text-primary-foreground">
         <div className="container mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
            <div>
              <div className="text-4xl sm:text-6xl font-black mb-2">15k+</div>
-             <p className="text-sm uppercase font-bold opacity-80">Active Users</p>
+             <p className="text-xs sm:text-sm uppercase font-bold opacity-80">Active Users</p>
            </div>
            <div>
              <div className="text-4xl sm:text-6xl font-black mb-2">2M+</div>
-             <p className="text-sm uppercase font-bold opacity-80">Emails Sent</p>
+             <p className="text-xs sm:text-sm uppercase font-bold opacity-80">Emails Sent</p>
            </div>
            <div>
              <div className="text-4xl sm:text-6xl font-black mb-2">₦0</div>
-             <p className="text-sm uppercase font-bold opacity-80">Signup Cost</p>
+             <p className="text-xs sm:text-sm uppercase font-bold opacity-80">Signup Cost</p>
            </div>
            <div>
              <div className="text-4xl sm:text-6xl font-black mb-2">99%</div>
-             <p className="text-sm uppercase font-bold opacity-80">Deliverability</p>
+             <p className="text-xs sm:text-sm uppercase font-bold opacity-80">Deliverability</p>
            </div>
         </div>
       </section>
 
       {/* Feature Grid */}
-      <section className="py-24">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold sm:text-5xl mb-4 tracking-tight">Built for the Nigerian Landscape</h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">Fast, reliable, and integrated with local payments for Lagos-based studios.</p>
+      <section className="py-16 sm:py-24 px-4">
+        <div className="container mx-auto">
+          <div className="text-center mb-12 sm:mb-16">
+            <h2 className="text-2xl font-bold sm:text-5xl mb-4 tracking-tight">Built for the Nigerian Landscape</h2>
+            <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">Fast, reliable, and integrated with local payments for Lagos-based studios.</p>
           </div>
-          <div className="grid gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-6 sm:gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
             <FeatureCard 
               icon={<Mailbox className="h-10 w-10 text-primary" />}
               title="AI Lead Intelligence"
@@ -153,10 +153,10 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-24 bg-muted/30">
-        <div className="container mx-auto px-4">
-           <h2 className="text-3xl font-bold text-center sm:text-5xl mb-16 tracking-tight">Voices of Success</h2>
-           <div className="grid gap-8 md:grid-cols-3">
+      <section className="py-16 sm:py-24 bg-muted/30 px-4">
+        <div className="container mx-auto">
+           <h2 className="text-2xl font-bold text-center sm:text-5xl mb-12 sm:mb-16 tracking-tight">Voices of Success</h2>
+           <div className="grid gap-6 sm:gap-8 md:grid-cols-3">
               <TestimonialCard 
                 quote="EmailCraft changed how we handle B2B sales in Lagos. We extracted 500 leads in one afternoon and had a 40% open rate by morning."
                 name="Tunde Balogun"
@@ -180,31 +180,31 @@ export default function LandingPage() {
       </section>
 
       {/* FAQ */}
-      <section className="py-24 px-4">
+      <section className="py-16 sm:py-24 px-4">
         <div className="container mx-auto max-w-3xl">
-          <h2 className="text-3xl font-bold text-center mb-12 tracking-tight">Common Questions</h2>
+          <h2 className="text-2xl font-bold text-center mb-8 sm:mb-12 tracking-tight">Common Questions</h2>
           <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="item-1">
-              <AccordionTrigger className="text-lg">Can I pay with my Nigerian Naira card?</AccordionTrigger>
-              <AccordionContent>
+              <AccordionTrigger className="text-base sm:text-lg text-left">Can I pay with my Nigerian Naira card?</AccordionTrigger>
+              <AccordionContent className="text-sm sm:text-base leading-relaxed">
                 Yes! We use Paystack for all local transactions. You can pay easily using your Naira Mastercard, Visa, Verve, or even via Bank Transfer and USSD.
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="item-2">
-              <AccordionTrigger className="text-lg">What is the difference between Free and Elite?</AccordionTrigger>
-              <AccordionContent>
+              <AccordionTrigger className="text-base sm:text-lg text-left">What is the difference between Free and Elite?</AccordionTrigger>
+              <AccordionContent className="text-sm sm:text-base leading-relaxed">
                 The Free plan gives you basic AI extractions and campaign tools. Elite (₦1,000/mo) unlocks unlimited AI lead extractions, unlimited campaigns, and priority dispatch.
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="item-3">
-              <AccordionTrigger className="text-lg">Do you share my contact data?</AccordionTrigger>
-              <AccordionContent>
+              <AccordionTrigger className="text-base sm:text-lg text-left">Do you share my contact data?</AccordionTrigger>
+              <AccordionContent className="text-sm sm:text-base leading-relaxed">
                 Never. Your data is isolated in your private Firestore collection. We never sell or share your contact lists with third parties.
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="item-4">
-              <AccordionTrigger className="text-lg">How accurate is the email verification?</AccordionTrigger>
-              <AccordionContent>
+              <AccordionTrigger className="text-base sm:text-lg text-left">How accurate is the email verification?</AccordionTrigger>
+              <AccordionContent className="text-sm sm:text-base leading-relaxed">
                 We perform real-time MX record checks and domain validation. While no system is 100%, our local cleaning engine maintains a 99% deliverability rate for local ISPs.
               </AccordionContent>
             </AccordionItem>
@@ -213,25 +213,25 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-4">
+      <section className="py-16 sm:py-20 px-4">
         <div className="container mx-auto">
-          <div className="rounded-3xl bg-primary px-6 py-16 text-center text-primary-foreground shadow-2xl relative overflow-hidden">
+          <div className="rounded-2xl sm:rounded-3xl bg-primary px-6 py-12 sm:py-16 text-center text-primary-foreground shadow-2xl relative overflow-hidden">
              <div className="absolute top-0 right-0 -mr-20 -mt-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
-            <h2 className="text-3xl font-bold sm:text-5xl mb-6 tracking-tight">Ready to close more deals?</h2>
-            <p className="mx-auto max-w-xl text-lg mb-10 opacity-90">
+            <h2 className="text-2xl font-bold sm:text-5xl mb-6 tracking-tight">Ready to close more deals?</h2>
+            <p className="mx-auto max-w-xl text-base sm:text-lg mb-10 opacity-90 leading-relaxed px-2">
               Join the Elite community of Nigerian studios automating their sales intelligence today.
             </p>
-            <Button size="lg" variant="secondary" className="h-14 px-10 text-xl font-bold w-full sm:w-auto" onClick={() => handleCtaClick("/signup")}>
+            <Button size="lg" variant="secondary" className="h-14 px-10 text-xl font-bold w-full sm:w-auto shadow-xl" onClick={() => handleCtaClick("/signup")}>
               Create Your Free Account
             </Button>
           </div>
         </div>
       </section>
 
-      <footer className="py-12 border-t mt-auto">
-        <div className="container mx-auto text-center text-sm text-muted-foreground flex flex-col sm:flex-row justify-center gap-6">
+      <footer className="py-12 border-t mt-auto px-4 bg-muted/5">
+        <div className="container mx-auto text-center text-sm text-muted-foreground flex flex-col sm:flex-row justify-center items-center gap-6">
           <p>© {new Date().getFullYear()} EmailCraft Studio. All rights reserved.</p>
-          <div className="flex justify-center gap-4">
+          <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
              <Link href="/pricing" className="hover:text-primary transition-colors underline-offset-4 hover:underline">Pricing</Link>
              <Link href="/signup" className="hover:text-primary transition-colors underline-offset-4 hover:underline">Elite Growth</Link>
              <Link href="/dashboard" className="hover:text-primary transition-colors underline-offset-4 hover:underline">Studio Dashboard</Link>
@@ -244,7 +244,7 @@ export default function LandingPage() {
 
 function Step({ number, icon, title, description }: { number: string; icon: React.ReactNode; title: string; description: string }) {
   return (
-    <div className="flex flex-col items-center text-center group bg-background p-6 rounded-2xl border hover:border-primary/50 transition-all">
+    <div className="flex flex-col items-center text-center group bg-background p-6 sm:p-8 rounded-2xl border hover:border-primary/50 transition-all hover:shadow-lg">
       <div className="h-12 w-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform">
         {icon}
       </div>
@@ -257,7 +257,7 @@ function Step({ number, icon, title, description }: { number: string; icon: Reac
 
 function FeatureCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return (
-    <div className="p-8 rounded-2xl border bg-card hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+    <div className="p-6 sm:p-8 rounded-2xl border bg-card hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
       <div className="mb-4">{icon}</div>
       <h3 className="text-xl font-bold mb-2">{title}</h3>
       <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
@@ -267,16 +267,16 @@ function FeatureCard({ icon, title, description }: { icon: React.ReactNode; titl
 
 function TestimonialCard({ quote, name, role, initials }: { quote: string; name: string; role: string; initials: string }) {
   return (
-    <div className="p-8 rounded-2xl border bg-card flex flex-col gap-6 shadow-sm">
+    <div className="p-6 sm:p-8 rounded-2xl border bg-card flex flex-col gap-6 shadow-sm hover:shadow-md transition-shadow">
        <Quote className="h-8 w-8 text-primary opacity-20" />
        <p className="text-sm leading-relaxed italic text-foreground">"{quote}"</p>
        <div className="flex items-center gap-4 pt-4 border-t">
-          <Avatar className="h-10 w-10 border-2 border-primary/20">
+          <Avatar className="h-10 w-10 border-2 border-primary/20 shrink-0">
              <AvatarFallback className="bg-primary/10 text-primary font-black">{initials}</AvatarFallback>
           </Avatar>
-          <div className="flex flex-col">
-             <span className="text-sm font-bold">{name}</span>
-             <span className="text-[10px] text-muted-foreground uppercase font-medium">{role}</span>
+          <div className="flex flex-col min-w-0">
+             <span className="text-sm font-bold truncate">{name}</span>
+             <span className="text-[10px] text-muted-foreground uppercase font-medium truncate">{role}</span>
           </div>
        </div>
     </div>
