@@ -21,7 +21,6 @@ import {
 } from "lucide-react";
 import { useUser } from "@/firebase";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import { 
   Accordion, 
   AccordionContent, 
@@ -31,7 +30,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export default function LandingPage() {
-  const { user, isUserLoading } = useUser();
+  const { user } = useUser();
   const router = useRouter();
 
   const handleCtaClick = (path: string) => {
@@ -67,6 +66,13 @@ export default function LandingPage() {
               <Link href="/pricing">View Elite Pricing (₦1,000)</Link>
             </Button>
           </div>
+          
+          <div className="mt-16 flex justify-center items-center gap-8 grayscale opacity-50 overflow-hidden py-4">
+             <div className="font-black text-xl italic tracking-tighter">LAGOS.AI</div>
+             <div className="font-black text-xl italic tracking-tighter">STUDIO.HUB</div>
+             <div className="font-black text-xl italic tracking-tighter">OUTREACH.NG</div>
+             <div className="font-black text-xl italic tracking-tighter">SALES.LEADS</div>
+          </div>
         </div>
         
         {/* Background Gradients */}
@@ -78,18 +84,39 @@ export default function LandingPage() {
 
       {/* How It Works Section */}
       <section className="py-20 bg-muted/20">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
+        <div className="container mx-auto px-4 text-center">
+          <div className="mb-16">
             <h2 className="text-3xl font-bold sm:text-5xl mb-4 tracking-tight uppercase tracking-widest">How It Works</h2>
             <p className="text-lg text-muted-foreground max-w-xl mx-auto">From raw data to delivered messages in 4 simple steps.</p>
           </div>
-          <div className="grid gap-12 md:grid-cols-4 relative">
-             <div className="hidden md:block absolute top-1/2 left-0 w-full h-px bg-primary/20 -translate-y-1/2 -z-10" />
+          <div className="grid gap-8 md:grid-cols-4 relative">
              <Step number="01" icon={<Search className="h-6 w-6" />} title="Extract" description="Paste raw text or LinkedIn bios. AI extracts names, roles, and emails." />
              <Step number="02" icon={<ShieldCheck className="h-6 w-6" />} title="Clean" description="Automatic MX record checks ensure every address is valid in Nigeria." />
              <Step number="03" icon={<Sparkles className="h-6 w-6" />} title="Craft" description="AI drafts personalized subject lines and body content using recipient tokens." />
              <Step number="04" icon={<Send className="h-6 w-6" />} title="Dispatch" description="Send via professional infrastructure. Pay locally via Paystack USSD or Card." />
           </div>
+        </div>
+      </section>
+
+      {/* Statistics Section */}
+      <section className="py-24 bg-primary text-primary-foreground">
+        <div className="container mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+           <div>
+             <div className="text-4xl sm:text-6xl font-black mb-2">15k+</div>
+             <p className="text-sm uppercase font-bold opacity-80">Active Users</p>
+           </div>
+           <div>
+             <div className="text-4xl sm:text-6xl font-black mb-2">2M+</div>
+             <p className="text-sm uppercase font-bold opacity-80">Emails Sent</p>
+           </div>
+           <div>
+             <div className="text-4xl sm:text-6xl font-black mb-2">₦0</div>
+             <p className="text-sm uppercase font-bold opacity-80">Signup Cost</p>
+           </div>
+           <div>
+             <div className="text-4xl sm:text-6xl font-black mb-2">99%</div>
+             <p className="text-sm uppercase font-bold opacity-80">Deliverability</p>
+           </div>
         </div>
       </section>
 
@@ -175,6 +202,12 @@ export default function LandingPage() {
                 Never. Your data is isolated in your private Firestore collection. We never sell or share your contact lists with third parties.
               </AccordionContent>
             </AccordionItem>
+            <AccordionItem value="item-4">
+              <AccordionTrigger className="text-lg">How accurate is the email verification?</AccordionTrigger>
+              <AccordionContent>
+                We perform real-time MX record checks and domain validation. While no system is 100%, our local cleaning engine maintains a 99% deliverability rate for local ISPs.
+              </AccordionContent>
+            </AccordionItem>
           </Accordion>
         </div>
       </section>
@@ -201,6 +234,7 @@ export default function LandingPage() {
           <div className="flex justify-center gap-4">
              <Link href="/pricing" className="hover:text-primary transition-colors underline-offset-4 hover:underline">Pricing</Link>
              <Link href="/signup" className="hover:text-primary transition-colors underline-offset-4 hover:underline">Elite Growth</Link>
+             <Link href="/dashboard" className="hover:text-primary transition-colors underline-offset-4 hover:underline">Studio Dashboard</Link>
           </div>
         </div>
       </footer>

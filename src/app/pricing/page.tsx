@@ -33,6 +33,7 @@ export default function PricingPage() {
     setLoading(true);
 
     try {
+      // Simulate Paystack initialization
       const result = await initializePaymentAction(user.email!, 1000);
       
       if (result.simulation) {
