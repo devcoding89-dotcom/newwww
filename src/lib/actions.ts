@@ -16,8 +16,10 @@ import type { Contact, EmailLog, Campaign } from "./types";
 import dns from "dns/promises";
 import sgMail from "@sendgrid/mail";
 
-// CONFIGURE YOUR SENDGRID API KEY HERE
+// Securely retrieve API keys from environment variables
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY; 
+const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
+
 if (SENDGRID_API_KEY) {
   sgMail.setApiKey(SENDGRID_API_KEY);
 }
@@ -32,7 +34,7 @@ export async function isPublicDomain(email: string): Promise<boolean> {
   return PUBLIC_DOMAINS.includes(domain);
 }
 
-// AI Actions
+// AI Actions (Server-Side)
 export async function extractEmailsAction(
   input: AiEmailExtractionInput
 ): Promise<AiEmailExtractionOutput> {
@@ -45,7 +47,7 @@ export async function draftCampaignContentAction(
   return await draftCampaignContent(input);
 }
 
-// Validation Action
+// Validation Action (Server-Side DNS check)
 export async function validateEmailAction(
   email: string
 ): Promise<{ isValid: boolean; reason: string }> {
@@ -68,7 +70,7 @@ export async function validateEmailAction(
 
 /**
  * CAMPAIGN DISPATCH ACTION
- * Handles the actual mailing process or simulates it if SendGrid is not configured.
+ * Securely handles the mailing process on the server.
  */
 export async function dispatchEmailAction(
   recipient: Contact, 
@@ -80,7 +82,7 @@ export async function dispatchEmailAction(
     try {
       await sgMail.send({
         to: recipient.email,
-        from: "outreach@emailcraft.studio", // In production, this would be the verified sender
+        from: "outreach@emailcraft.studio",
         subject: campaign.subject!,
         html: campaign.body!,
       });
@@ -103,7 +105,7 @@ export async function dispatchEmailAction(
     }
   }
 
-  // Simulation fallback (98% success rate)
+  // Simulation fallback for development environments
   const isSuccess = Math.random() < 0.98;
   return {
     id: logId,
@@ -115,21 +117,11 @@ export async function dispatchEmailAction(
   };
 }
 
-// Domain Verification
-export async function verifyDomainAction(domain: string): Promise<{ success: boolean; message: string }> {
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  if (domain.includes(".")) {
-    return { success: true, message: "Domain DNS records verified successfully!" };
-  }
-  return { success: false, message: "Could not find valid DNS records for this domain." };
-}
-
 /**
  * PAYSTACK PAYMENT INITIALIZATION
+ * Securely communicates with Paystack API.
  */
 export async function initializePaymentAction(email: string, amount: number) {
-  const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
-  
   if (!PAYSTACK_SECRET_KEY) {
     return { 
       simulation: true, 
@@ -146,7 +138,7 @@ export async function initializePaymentAction(email: string, amount: number) {
       },
       body: JSON.stringify({
         email,
-        amount: amount * 100,
+        amount: amount * 100, // Amount in kobo
         callback_url: `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:9002"}/api/paystack/verify`,
       }),
     });
