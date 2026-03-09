@@ -2,7 +2,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { TemplateForm } from "../components/template-form";
+import { TemplateForm } from "../../components/template-form";
 
 export default function EditTemplatePage() {
   const params = useParams();
