@@ -35,7 +35,7 @@ import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useToast } from "@/hooks/use-toast";
 import { useGlobalLoading } from "@/hooks/use-global-loading";
 import type { Campaign, ContactList, SenderSettings, CampaignStatus, Contact, EmailLog } from "@/lib/types";
-import { draftCampaignContentAction } from "@/lib/actions";
+import { draftCampaignContentAction, dispatchEmailAction } from "@/lib/actions";
 import { 
   Loader2, 
   Wand2, 
@@ -227,7 +227,7 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
       return;
     }
 
-    // Set to sending status
+    // Mark as sending
     await updateDoc(campaignRef, {
       status: "sending",
       sentCount: 0,
@@ -240,39 +240,27 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
     let totalSent = 0;
     let totalFailed = 0;
 
-    // Process in batches of 10 for simulated progress
+    // Process using Server Actions
     const BATCH_SIZE = 10;
     for (let i = 0; i < contactIds.length; i += BATCH_SIZE) {
       const currentBatchIds = contactIds.slice(i, i + BATCH_SIZE);
       const batch = writeBatch(db);
       
-      // Fetch actual contact data for these IDs
       const contactsSnap = await getDocs(query(
         collection(db, "users", user.uid, "contacts"),
         where("__name__", "in", currentBatchIds)
       ));
 
-      contactsSnap.docs.forEach(docSnap => {
+      for (const docSnap of contactsSnap.docs) {
         const contact = docSnap.data() as Contact;
+        const logData = await dispatchEmailAction(contact, campaignData);
+        
         const logRef = doc(collection(db, "users", user.uid, "campaigns", campaignId!, "logs"));
-        
-        // Simulating 98% success rate
-        const isSuccess = Math.random() < 0.98;
-        
-        const logData: EmailLog = {
-          id: logRef.id,
-          recipientEmail: contact.email,
-          recipientName: `${contact.firstName} ${contact.lastName}`,
-          status: isSuccess ? 'delivered' : 'failed',
-          error: isSuccess ? undefined : 'Mailbox full or temporarily unavailable',
-          sentAt: new Date().toISOString(),
-        };
-
         batch.set(logRef, logData);
-        if (isSuccess) totalSent++; else totalFailed++;
-      });
+        
+        if (logData.status === 'delivered') totalSent++; else totalFailed++;
+      }
 
-      // Update campaign progress
       batch.update(campaignRef, {
         sentCount: totalSent,
         failedCount: totalFailed,
@@ -280,7 +268,7 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
       });
 
       await batch.commit();
-      await new Promise(r => setTimeout(r, 500)); // Visual progress delay
+      await new Promise(r => setTimeout(r, 800)); // Smooth progress updates
     }
 
     await updateDoc(campaignRef, {
