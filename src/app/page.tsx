@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { 
@@ -35,6 +36,17 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 export default function LandingPage() {
   const { user } = useUser();
   const router = useRouter();
+
+  useEffect(() => {
+    const initCounters = async () => {
+      const { CountUp } = await import('countup.js');
+      new CountUp('stat-users', 15000, { suffix: '+', duration: 2.5 }).start();
+      new CountUp('stat-emails', 2000000, { suffix: '+', duration: 3 }).start();
+      new CountUp('stat-cost', 0, { prefix: '₦', duration: 1 }).start();
+      new CountUp('stat-delivery', 99, { suffix: '%', duration: 2 }).start();
+    };
+    initCounters();
+  }, []);
 
   const handleCtaClick = (path: string) => {
     if (user) {
@@ -125,19 +137,19 @@ export default function LandingPage() {
       <section className="py-16 sm:py-24 bg-primary text-primary-foreground">
         <div className="container mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
            <div>
-             <div className="text-4xl sm:text-6xl font-black mb-2">15k+</div>
+             <div id="stat-users" className="text-4xl sm:text-6xl font-black mb-2">0</div>
              <p className="text-xs sm:text-sm uppercase font-bold opacity-80">Active Users</p>
            </div>
            <div>
-             <div className="text-4xl sm:text-6xl font-black mb-2">2M+</div>
+             <div id="stat-emails" className="text-4xl sm:text-6xl font-black mb-2">0</div>
              <p className="text-xs sm:text-sm uppercase font-bold opacity-80">Emails Sent</p>
            </div>
            <div>
-             <div className="text-4xl sm:text-6xl font-black mb-2">₦0</div>
+             <div id="stat-cost" className="text-4xl sm:text-6xl font-black mb-2">0</div>
              <p className="text-xs sm:text-sm uppercase font-bold opacity-80">Signup Cost</p>
            </div>
            <div>
-             <div className="text-4xl sm:text-6xl font-black mb-2">99%</div>
+             <div id="stat-delivery" className="text-4xl sm:text-6xl font-black mb-2">0</div>
              <p className="text-xs sm:text-sm uppercase font-bold opacity-80">Deliverability</p>
            </div>
         </div>
