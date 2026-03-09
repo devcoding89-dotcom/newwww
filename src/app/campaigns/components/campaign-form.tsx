@@ -263,12 +263,13 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
       let totalSent = 0;
       let totalFailed = 0;
 
-      // 3. Process using Server Actions
+      // 3. Process recipients in batches
       const BATCH_SIZE = 10;
       for (let i = 0; i < contactIds.length; i += BATCH_SIZE) {
         const currentBatchIds = contactIds.slice(i, i + BATCH_SIZE);
         const batch = writeBatch(db);
         
+        // Fetch current contact details
         const contactsSnap = await getDocs(query(
           collection(db, "users", user.uid, "contacts"),
           where("__name__", "in", currentBatchIds)
@@ -276,7 +277,13 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
 
         for (const docSnap of contactsSnap.docs) {
           const contact = docSnap.data() as Contact;
-          const logData = await dispatchEmailAction(contact, saveResult.data);
+          // Pass current sender settings to ensure authorized send
+          const logData = await dispatchEmailAction(
+            contact, 
+            saveResult.data, 
+            sender.fromEmail, 
+            sender.fromName
+          );
           
           const logRef = doc(collection(db, "users", user.uid, "campaigns", activeCampaignId, "logs"));
           batch.set(logRef, logData);
@@ -284,6 +291,7 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
           if (logData.status === 'delivered') totalSent++; else totalFailed++;
         }
 
+        // Periodic progress updates
         batch.update(activeCampaignRef, {
           sentCount: totalSent,
           failedCount: totalFailed,
@@ -291,7 +299,7 @@ export function CampaignForm({ campaignId }: { campaignId?: string }) {
         });
 
         await batch.commit();
-        await new Promise(r => setTimeout(r, 800)); // Smooth progress updates
+        await new Promise(r => setTimeout(r, 800)); // Smooth progress updates for UI
       }
 
       await updateDoc(activeCampaignRef, {

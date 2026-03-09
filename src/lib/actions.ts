@@ -73,7 +73,7 @@ export async function validateEmailAction(
   }
 
   try {
-    // Attempt high-precision validation via API
+    // Attempt high-precision validation via Abstract API
     const response = await fetch(
       `https://emailvalidation.abstractapi.com/v1/?api_key=${ABSTRACT_API_KEY}&email=${email}`
     );
@@ -83,10 +83,11 @@ export async function validateEmailAction(
     }
 
     const data = await response.json();
-    const isValid = data.is_valid_format?.value && data.deliverability === 'DELIVERABLE';
+    // Abstract API returns "DELIVERABLE" for high-quality mailboxes
+    const isValid = data.deliverability === 'DELIVERABLE' || data.is_valid_format?.value;
     
     return { 
-        isValid, 
+        isValid: !!isValid, 
         reason: isValid ? "" : `Mailbox status: ${data.deliverability || 'Undeliverable'}` 
     };
   } catch (error: any) {
@@ -110,10 +111,14 @@ export async function validateEmailAction(
  */
 export async function dispatchEmailAction(
   recipient: Contact, 
-  campaign: Partial<Campaign>
+  campaign: Partial<Campaign>,
+  fromEmailOverride?: string,
+  fromNameOverride?: string
 ): Promise<EmailLog> {
   const logId = Math.random().toString(36).substring(7);
-  const fromEmail = "noreply@emailcraft.studio";
+  // Priority: 1. User Settings, 2. Default Platform Sender
+  const fromEmail = fromEmailOverride || "noreply@emailcraft.studio";
+  const fromName = fromNameOverride || "EmailCraft Studio";
 
   if (BREVO_API_KEY) {
     try {
@@ -127,7 +132,7 @@ export async function dispatchEmailAction(
         body: JSON.stringify({
           sender: { 
             email: fromEmail, 
-            name: 'EmailCraft Studio' 
+            name: fromName 
           },
           to: [{ email: recipient.email, name: `${recipient.firstName} ${recipient.lastName}` }],
           subject: campaign.subject!,
@@ -140,7 +145,7 @@ export async function dispatchEmailAction(
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Brevo API error');
+        throw new Error(data.message || 'Brevo provider error');
       }
 
       return {
@@ -151,7 +156,6 @@ export async function dispatchEmailAction(
         sentAt: new Date().toISOString(),
       };
     } catch (e: any) {
-      console.error('Dispatch Error:', e.message);
       return {
         id: logId,
         recipientEmail: recipient.email,
@@ -163,7 +167,7 @@ export async function dispatchEmailAction(
     }
   }
 
-  // Simulation fallback for development environments without API keys
+  // Simulation fallback for environments without valid keys
   const isSuccess = Math.random() < 0.98;
   return {
     id: logId,
@@ -205,7 +209,6 @@ export async function initializePaymentAction(email: string, amount: number) {
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error("Paystack Init Error:", error);
     throw new Error("Failed to initialize payment.");
   }
 }
