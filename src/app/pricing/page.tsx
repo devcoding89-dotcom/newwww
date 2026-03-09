@@ -1,10 +1,10 @@
+
 "use client";
 
 import { useState } from "react";
 import { Check, Loader2, Zap, Rocket, ShieldCheck, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import PageHeader from "@/components/page-header";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc, updateDoc } from "firebase/firestore";
@@ -26,15 +26,17 @@ export default function PricingPage() {
   const { data: profile } = useDoc(userProfileRef);
 
   const handleUpgrade = async () => {
-    if (!user || !profile) return;
+    if (!user || !profile) {
+      toast({ title: "Please Login First", description: "You need an account to upgrade." });
+      return;
+    }
     setLoading(true);
 
     try {
       const result = await initializePaymentAction(user.email!, 1000);
       
       if (result.simulation) {
-        // Prototype Simulation Logic
-        toast({ title: "Simulating Local Payment...", description: "Connecting to Paystack Secure Gateway..." });
+        toast({ title: "Simulating Paystack Gateway...", description: "Connecting to secure local payment node..." });
         await new Promise(r => setTimeout(r, 2000));
         
         if (userProfileRef) {
@@ -42,10 +44,9 @@ export default function PricingPage() {
             subscriptionTier: "elite",
             updatedAt: new Date().toISOString()
           });
-          toast({ title: "₦1,000 Payment Successful!", description: "Welcome to Elite membership, Tunde!" });
+          toast({ title: "₦1,000 Payment Successful!", description: "Welcome to Elite membership!" });
         }
       } else if (result.data?.authorization_url) {
-        // Real Paystack Redirect
         window.location.href = result.data.authorization_url;
       }
     } catch (error) {
@@ -61,20 +62,20 @@ export default function PricingPage() {
     <div className="container mx-auto py-12 max-w-5xl">
       <div className="text-center mb-16 space-y-4">
         <PageHeader 
-          title="Simple, Transparent Pricing" 
-          description="Scale your Nigerian business with our Elite infrastructure."
+          title="Scale Your Outreach" 
+          description="Transparent pricing built for the Nigerian digital ecosystem."
         />
         <p className="text-muted-foreground text-lg">
-          Join 15,000+ local professionals automating their sales intelligence in Lagos, Abuja, and beyond.
+          Join 15,000+ local professionals automating their sales intelligence across Lagos and Abuja.
         </p>
       </div>
 
       <div className="grid gap-8 md:grid-cols-2 lg:max-w-4xl lg:mx-auto">
         {/* Free Tier */}
-        <Card className="flex flex-col relative overflow-hidden">
+        <Card className="flex flex-col relative overflow-hidden border-border/50">
           <CardHeader>
             <CardTitle className="text-xl">Free Starter</CardTitle>
-            <CardDescription>Perfect for testing the AI extraction.</CardDescription>
+            <CardDescription>Perfect for testing AI extraction.</CardDescription>
             <div className="mt-4 flex items-baseline gap-1">
               <span className="text-4xl font-bold">₦0</span>
               <span className="text-muted-foreground">/month</span>
@@ -85,8 +86,7 @@ export default function PricingPage() {
               <FeatureItem text="50 AI Lead Extractions" />
               <FeatureItem text="1 Active Campaign" />
               <FeatureItem text="Standard MX Verification" />
-              <FeatureItem text="Personalization Tokens" />
-              <FeatureItem text="Paystack Not Required" />
+              <FeatureItem text="Email Personalization Tags" />
               <FeatureItem text="Community Support" inactive />
             </div>
           </CardContent>
@@ -99,18 +99,18 @@ export default function PricingPage() {
 
         {/* Elite Tier */}
         <Card className={cn(
-          "flex flex-col relative overflow-hidden border-primary/50 shadow-xl",
+          "flex flex-col relative overflow-hidden border-primary/50 shadow-2xl scale-105 bg-background",
           isElite && "border-green-500 shadow-green-100"
         )}>
           <div className="absolute top-0 right-0 p-1 bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-widest px-3 rounded-bl-lg">
-            Best Value
+            Recommended
           </div>
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-xl">Elite Growth</CardTitle>
               <Zap className="h-5 w-5 text-amber-500 fill-amber-500" />
             </div>
-            <CardDescription>For serious marketing studios.</CardDescription>
+            <CardDescription>For growing marketing studios.</CardDescription>
             <div className="mt-4 flex items-baseline gap-1">
               <span className="text-4xl font-bold">₦1,000</span>
               <span className="text-muted-foreground">/month</span>
@@ -120,7 +120,7 @@ export default function PricingPage() {
             <div className="space-y-2">
               <FeatureItem text="Unlimited AI Lead Extractions" highlight />
               <FeatureItem text="Unlimited Email Campaigns" highlight />
-              <FeatureItem text="Priority Local Processing" highlight />
+              <FeatureItem text="Priority Local Infrastructure" highlight />
               <FeatureItem text="Custom Domain Branding" highlight />
               <FeatureItem text="Elite Performance Reports" highlight />
               <FeatureItem text="24/7 Priority WhatsApp Support" highlight />
@@ -137,7 +137,7 @@ export default function PricingPage() {
             </Button>
             <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground">
               <CreditCard className="h-3 w-3" />
-              Secure Paystack Payment (Card, Transfer, USSD)
+              Paystack Secure: Card, Transfer, USSD
             </div>
           </CardFooter>
         </Card>
@@ -147,17 +147,17 @@ export default function PricingPage() {
         <ValueCard 
           icon={<ShieldCheck className="h-8 w-8 text-green-500" />}
           title="Nigerian Verified"
-          description="Optimized delivery for Nigerian domains and business networks."
+          description="Optimized delivery for local business domains and ISPs."
         />
         <ValueCard 
           icon={<Zap className="h-8 w-8 text-amber-500" />}
           title="Lagos Speed AI"
-          description="Our extraction engine is fine-tuned for the local business context."
+          description="Extraction engine fine-tuned for regional business context."
         />
         <ValueCard 
           icon={<CreditCard className="h-8 w-8 text-blue-500" />}
           title="Local Infrastructure"
-          description="Proudly supporting the local ecosystem with ₦ payments via Paystack."
+          description="Supporting the ecosystem with ₦ payments via Paystack."
         />
       </div>
     </div>
