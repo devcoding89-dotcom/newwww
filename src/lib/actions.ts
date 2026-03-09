@@ -16,7 +16,8 @@ import type { Contact, EmailLog, Campaign } from "./types";
 import dns from "dns/promises";
 
 // Securely retrieve API keys from environment variables
-const BREVO_API_KEY = process.env.BREVO_API_KEY;
+const BREVO_API_KEY = process.env.BREVO_API_KEY || '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';
+const VALIDATION_KEY = process.env.ABSTRACT_API_KEY || '69c9b78b0150477db4ccf5374edd4705';
 
 const PUBLIC_DOMAINS = [
   "gmail.com", "yahoo.com", "outlook.com", "hotmail.com", 
@@ -62,7 +63,7 @@ export async function draftCampaignContentAction(
   return await draftCampaignContent(input);
 }
 
-// Validation Action (Server-Side DNS check)
+// Validation Action (Server-Side high-precision check)
 export async function validateEmailAction(
   email: string
 ): Promise<{ isValid: boolean; reason: string }> {
@@ -71,15 +72,41 @@ export async function validateEmailAction(
     return { isValid: false, reason: "Invalid format" };
   }
 
-  const domain = email.split("@")[1];
   try {
-    const records = await dns.resolveMx(domain);
-    if (records && records.length > 0) {
-      return { isValid: true, reason: "" };
+    // Attempt high-precision validation via API
+    const response = await fetch(
+      `https://emailvalidation.abstractapi.com/v1/?api_key=${VALIDATION_KEY}&email=${email}`
+    );
+
+    if (!response.ok) {
+        // Fallback to DNS check if API fails or quota exceeded
+        const domain = email.split("@")[1];
+        const records = await dns.resolveMx(domain);
+        if (records && records.length > 0) {
+            return { isValid: true, reason: "" };
+        }
+        return { isValid: false, reason: "No MX records found for domain" };
     }
-    return { isValid: false, reason: "No MX records found for domain" };
-  } catch (error) {
-    return { isValid: false, reason: "Domain does not exist or has no mail server" };
+
+    const data = await response.json();
+    const isValid = data.is_valid_format?.value && data.deliverability === 'DELIVERABLE';
+    
+    return { 
+        isValid, 
+        reason: isValid ? "" : `Mailbox status: ${data.deliverability || 'Undeliverable'}` 
+    };
+  } catch (error: any) {
+    // Final fallback to native DNS if fetch fails entirely
+    try {
+        const domain = email.split("@")[1];
+        const records = await dns.resolveMx(domain);
+        return { 
+            isValid: !!(records && records.length > 0), 
+            reason: records && records.length > 0 ? "" : "DNS verification failed" 
+        };
+    } catch (e) {
+        return { isValid: false, reason: "Validation services currently unavailable" };
+    }
   }
 }
 
