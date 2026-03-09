@@ -14,15 +14,10 @@ import type {
 import type { Contact, EmailLog, Campaign } from "./types";
 
 import dns from "dns/promises";
-import sgMail from "@sendgrid/mail";
 
 // Securely retrieve API keys from environment variables
-const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY; 
+const BREVO_API_KEY = process.env.BREVO_API_KEY || "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";
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
-
-if (SENDGRID_API_KEY) {
-  sgMail.setApiKey(SENDGRID_API_KEY);
-}
 
 const PUBLIC_DOMAINS = [
   "gmail.com", "yahoo.com", "outlook.com", "hotmail.com", 
@@ -70,22 +65,43 @@ export async function validateEmailAction(
 
 /**
  * CAMPAIGN DISPATCH ACTION
- * Securely handles the mailing process on the server.
+ * Securely handles the mailing process using Brevo API.
  */
 export async function dispatchEmailAction(
   recipient: Contact, 
   campaign: Partial<Campaign>
 ): Promise<EmailLog> {
   const logId = Math.random().toString(36).substring(7);
-  
-  if (SENDGRID_API_KEY) {
+  const fromEmail = "noreply@emailcraft.studio";
+
+  if (BREVO_API_KEY) {
     try {
-      await sgMail.send({
-        to: recipient.email,
-        from: "outreach@emailcraft.studio",
-        subject: campaign.subject!,
-        html: campaign.body!,
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'api-key': BREVO_API_KEY,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          sender: { 
+            email: fromEmail, 
+            name: 'EmailCraft Studio' 
+          },
+          to: [{ email: recipient.email, name: `${recipient.firstName} ${recipient.lastName}` }],
+          subject: campaign.subject!,
+          htmlContent: campaign.body!,
+          trackOpens: true,
+          trackClicks: true,
+        }),
       });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Brevo API error');
+      }
+
       return {
         id: logId,
         recipientEmail: recipient.email,
@@ -94,6 +110,7 @@ export async function dispatchEmailAction(
         sentAt: new Date().toISOString(),
       };
     } catch (e: any) {
+      console.error('Dispatch Error:', e.message);
       return {
         id: logId,
         recipientEmail: recipient.email,
@@ -105,7 +122,7 @@ export async function dispatchEmailAction(
     }
   }
 
-  // Simulation fallback for development environments
+  // Simulation fallback for development environments without API keys
   const isSuccess = Math.random() < 0.98;
   return {
     id: logId,

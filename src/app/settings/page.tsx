@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -178,23 +179,23 @@ export default function SettingsPage() {
                   <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <h4 className="text-sm font-semibold">SPF Record (TXT)</h4>
-                      <Button variant="ghost" size="sm" onClick={() => copyToClipboard(`v=spf1 include:sendgrid.net ~all`)}>
+                      <Button variant="ghost" size="sm" onClick={() => copyToClipboard(`v=spf1 include:spf.brevo.com ~all`)}>
                         <Copy className="h-3 w-3" />
                       </Button>
                     </div>
                     <code className="text-[10px] break-all block p-2 bg-background rounded border">
-                      v=spf1 include:sendgrid.net ~all
+                      v=spf1 include:spf.brevo.com ~all
                     </code>
                   </div>
                   <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-semibold">DKIM Record (CNAME)</h4>
-                      <Button variant="ghost" size="sm" onClick={() => copyToClipboard(`s1._domainkey.${sender.domain}`)}>
+                      <h4 className="text-sm font-semibold">DKIM Record (TXT)</h4>
+                      <Button variant="ghost" size="sm" onClick={() => copyToClipboard(`mail._domainkey.${sender.domain}`)}>
                         <Copy className="h-3 w-3" />
                       </Button>
                     </div>
                     <code className="text-[10px] break-all block p-2 bg-background rounded border">
-                      s1.domainkey.u123456.sendgrid.net
+                      v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQ...
                     </code>
                   </div>
                   <Alert variant="default" className="bg-blue-50 border-blue-100">
@@ -224,23 +225,22 @@ export default function SettingsPage() {
             <CardContent className="space-y-6">
               <div className="space-y-1">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Daily Limit</span>
-                  <span className="font-medium">5,000</span>
+                  <span className="text-muted-foreground">Daily Limit (Free)</span>
+                  <span className="font-medium">300</span>
                 </div>
                 <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
                   <div className="h-full bg-primary w-[12%]" />
                 </div>
-                <p className="text-[10px] text-muted-foreground text-right">600 / 5,000 used today</p>
+                <p className="text-[10px] text-muted-foreground text-right">36 / 300 used today</p>
               </div>
               <div className="space-y-1">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Hourly Rate</span>
-                  <span className="font-medium">500</span>
+                  <span className="text-muted-foreground">Elite Daily Limit</span>
+                  <span className="font-medium">Unlimited</span>
                 </div>
                 <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
-                  <div className="h-full bg-primary w-[5%]" />
+                  <div className="h-full bg-green-500 w-full" />
                 </div>
-                <p className="text-[10px] text-muted-foreground text-right">25 / 500 current hour</p>
               </div>
             </CardContent>
           </Card>
@@ -307,7 +307,7 @@ export default function SettingsPage() {
               <h4 className="text-xs font-bold uppercase">Infrastructure</h4>
             </div>
             <p className="text-[10px] text-muted-foreground leading-relaxed">
-              Email delivery is powered by Twilio SendGrid. You do not need to provide SMTP credentials. All delivery is handled by our core systems.
+              Email delivery is powered by Brevo. You do not need to provide SMTP credentials. All delivery is handled by our core systems.
             </p>
           </div>
 
