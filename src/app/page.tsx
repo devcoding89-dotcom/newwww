@@ -17,7 +17,10 @@ import {
   Quote,
   Search,
   FileSpreadsheet,
-  Send
+  Send,
+  Upload,
+  Cpu,
+  MousePointerClick
 } from "lucide-react";
 import { useUser } from "@/firebase";
 import { useRouter } from "next/navigation";
@@ -90,10 +93,30 @@ export default function LandingPage() {
             <p className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto px-4">From raw data to delivered messages in 4 simple steps.</p>
           </div>
           <div className="grid gap-6 sm:gap-8 md:grid-cols-4 relative">
-             <Step number="01" icon={<Search className="h-6 w-6" />} title="Extract" description="Paste raw text or LinkedIn bios. AI extracts names, roles, and emails." />
-             <Step number="02" icon={<ShieldCheck className="h-6 w-6" />} title="Clean" description="Automatic MX record checks ensure every address is valid in Nigeria." />
-             <Step number="03" icon={<Sparkles className="h-6 w-6" />} title="Craft" description="AI drafts personalized subject lines and body content using recipient tokens." />
-             <Step number="04" icon={<Send className="h-6 w-6" />} title="Dispatch" description="Send via professional infrastructure. Pay locally via Paystack USSD or Card." />
+             <Step 
+               number="01" 
+               icon={<Upload className="h-6 w-6" />} 
+               title="Upload Your List" 
+               description="Paste emails or upload CSV/Excel files. We'll clean and validate them automatically." 
+             />
+             <Step 
+               number="02" 
+               icon={<Sparkles className="h-6 w-6" />} 
+               title="Personalize Your Message" 
+               description="Use {name} and {company} tags. Our AI extracts names from email addresses." 
+             />
+             <Step 
+               number="03" 
+               icon={<Zap className="h-6 w-6" />} 
+               title="Send in One Click" 
+               description="We generate ready-to-send links so you can reach out quickly and effortlessly." 
+             />
+             <Step 
+               number="04" 
+               icon={<Rocket className="h-6 w-6" />} 
+               title="Automate with Auto Scout" 
+               description="Use our Auto Scout feature for speed and automation, or bring your own auto-clicker for full control." 
+             />
           </div>
         </div>
       </section>
