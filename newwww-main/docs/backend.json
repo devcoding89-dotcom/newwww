@@ -1,0 +1,102 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents an authenticated user of the EmailCraft Studio application.",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "name": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "email", "createdAt"]
+    },
+    "Parse": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Parse",
+      "type": "object",
+      "description": "Stores the results of a text-to-email extraction operation.",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "text": { "type": "string" },
+        "emails": { "type": "array", "items": { "type": "string" } },
+        "contacts": { "type": "array", "items": { "type": "object" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "text", "emails", "createdAt"]
+    },
+    "Contact": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Contact",
+      "type": "object",
+      "description": "Represents an individual contact with their details.",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "company": { "type": "string" },
+        "position": { "type": "string" },
+        "isValid": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "firstName", "email", "isValid", "createdAt"]
+    },
+    "Campaign": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Campaign",
+      "type": "object",
+      "description": "Represents an email campaign created by a user.",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "subject": { "type": "string" },
+        "previewText": { "type": "string" },
+        "body": { "type": "string" },
+        "status": { "type": "string", "enum": ["draft", "scheduled", "sending", "paused", "completed", "failed"] },
+        "contactListId": { "type": "string" },
+        "sentCount": { "type": "number" },
+        "failedCount": { "type": "number" },
+        "totalCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "name", "subject", "body", "status", "createdAt"]
+    }
+  },
+  "auth": {
+    "providers": ["password", "google.com"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/backend/entities/User" },
+      "description": "Stores user profile information."
+    },
+    "/users/{userId}/parses/{parseId}": {
+      "schema": { "$ref": "#/backend/entities/Parse" },
+      "description": "Contains extraction results."
+    },
+    "/users/{userId}/contacts/{contactId}": {
+      "schema": { "$ref": "#/backend/entities/Contact" },
+      "description": "Stores individual contacts."
+    },
+    "/users/{userId}/contactLists/{contactListId}": {
+      "schema": { "type": "object" },
+      "description": "Manages lists of contacts."
+    },
+    "/users/{userId}/campaigns/{campaignId}": {
+      "schema": { "$ref": "#/backend/entities/Campaign" },
+      "description": "Defines an email campaign."
+    },
+    "/users/{userId}/campaigns/{campaignId}/logs/{logId}": {
+      "schema": { "type": "object" },
+      "description": "Records delivery events."
+    }
+  }
+}
