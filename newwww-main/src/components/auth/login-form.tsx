@@ -18,8 +18,7 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@/firebase";
-import { signIn, signInWithGoogle } from "@/lib/firebase/auth";
+import { signIn, signInWithGoogle } from "@/lib/supabase/auth";
 import { AuthCard } from "./auth-card";
 
 const loginSchema = z.object({
@@ -54,7 +53,6 @@ function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
 
 export function LoginForm() {
   const { toast } = useToast();
-  const auth = useAuth();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -65,25 +63,16 @@ export function LoginForm() {
   });
 
   async function onSubmit(values: LoginFormData) {
-    if (!auth) {
-      toast({ variant: "destructive", title: "Auth service not available" });
-      return;
-    }
     setIsLoading(true);
     try {
-      await signIn(auth, values);
+      await signIn(values);
       router.push("/");
     } catch (error: any) {
-      // Handle specific Firebase error codes without triggering the dev overlay via console.error
       let description = "Invalid email or password. Please try again.";
-      
-      if (error.code === 'auth/invalid-credential') {
-        description = "The email or password you entered is incorrect.";
-      } else if (error.code === 'auth/too-many-requests') {
-        description = "Too many failed attempts. Please try again later.";
-      } else if (error.code === 'auth/user-disabled') {
-        description = "This account has been disabled.";
-      }
+      const maybeMessage = typeof error?.message === "string" ? error.message : null;
+
+      // Supabase errors won’t use Firebase codes, so fall back to message when present.
+      if (maybeMessage) description = maybeMessage;
 
       toast({
         variant: "destructive",
@@ -96,19 +85,15 @@ export function LoginForm() {
   }
 
   async function onGoogleSignIn() {
-    if (!auth) {
-      toast({ variant: "destructive", title: "Auth service not available" });
-      return;
-    }
     setIsGoogleLoading(true);
     try {
-      await signInWithGoogle(auth);
+      await signInWithGoogle();
       router.push("/");
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Google Sign-In Failed",
-        description: error.message || "An unexpected error occurred.",
+        description: error?.message || "An unexpected error occurred.",
       });
     } finally {
       setIsGoogleLoading(false);

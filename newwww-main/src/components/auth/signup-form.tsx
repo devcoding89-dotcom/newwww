@@ -16,8 +16,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
-import { useAuth } from "@/firebase";
-import { signUp } from "@/lib/firebase/auth";
+import { signUp } from "@/lib/supabase/auth";
 import { AuthCard } from "./auth-card";
 import Link from "next/link";
 
@@ -31,7 +30,6 @@ type SignupFormData = z.infer<typeof signupSchema>;
 
 export function SignupForm() {
   const { toast } = useToast();
-  const auth = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
@@ -41,13 +39,9 @@ export function SignupForm() {
   });
 
   async function onSubmit(values: SignupFormData) {
-    if (!auth) {
-      toast({ variant: "destructive", title: "Auth service not available" });
-      return;
-    }
     setIsLoading(true);
     try {
-      await signUp(auth, values);
+      await signUp(values);
       setIsSubmitted(true);
     } catch (error: any) {
       let description = "An unexpected error occurred. Please try again.";

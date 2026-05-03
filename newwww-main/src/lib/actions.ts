@@ -16,7 +16,7 @@ import type { Contact, EmailLog, Campaign } from "./types";
 import dns from "dns/promises";
 
 // Securely retrieve API keys from environment variables
-const BREVO_API_KEY = process.env.BREVO_API_KEY || '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';
+const BREVO_API_KEY = processenv.BREVO_API_KEY || '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';
 const ABSTRACT_API_KEY = process.env.ABSTRACT_API_KEY || '69c9b78b0150477db4ccf5374edd4705';
 
 const PUBLIC_DOMAINS = [

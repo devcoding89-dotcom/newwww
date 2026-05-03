@@ -2,8 +2,10 @@
 "use client";
 
 import { useEffect } from "react";
-import { useCollection, useDoc, useUser, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, doc, query, orderBy } from "firebase/firestore";
+import { useUser } from "@/lib/supabase/provider";
+import { useMemoSupabaseCollection, useMemoSupabaseDoc } from "@/hooks/use-memo-supabase";
+import { useCollection } from "@/hooks/use-supabase-collection";
+import { useDoc } from "@/hooks/use-supabase-doc";
 import { 
   Card, 
   CardContent, 
@@ -34,26 +36,19 @@ import { useRouter } from "next/navigation";
 
 export default function AdminPanelPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useUser();
-  const db = useFirestore();
+  const { user, isLoading: authLoading } = useUser();
 
-  const userProfileRef = useMemoFirebase(() => {
-    if (!db || !user) return null;
-    return doc(db, "users", user.uid);
-  }, [db, user]);
+  const userProfileQuery = useMemoSupabaseDoc(user ? { tableName: "users", id: user.id } : null, [user]);
 
-  const { data: profile, loading: profileLoading } = useDoc(userProfileRef);
+  const { data: profile, isLoading: profileLoading } = useDoc(userProfileQuery);
 
-  const usersQuery = useMemoFirebase(() => {
-    if (!db) return null;
-    return query(collection(db, "users"), orderBy("email"));
-  }, [db]);
+  const usersQuery = useMemoSupabaseCollection({ tableName: "users", orderBy: { column: "email", ascending: true } }, []);
 
-  const { data: allUsers, loading: usersLoading } = useCollection(usersQuery);
+  const { data: allUsers, isLoading: usersLoading } = useCollection(usersQuery);
 
   useEffect(() => {
     if (!authLoading && !profileLoading) {
-      if (!user || (profile && !profile.isAdmin)) {
+      if (!user || (profile && !profile.is_admin)) {
         router.push("/");
       }
     }
@@ -67,7 +62,7 @@ export default function AdminPanelPage() {
     );
   }
 
-  if (!user || (profile && !profile.isAdmin)) {
+  if (!user || (profile && !profile.is_admin)) {
     return null;
   }
 
@@ -149,10 +144,10 @@ export default function AdminPanelPage() {
                   <TableBody>
                     {allUsers?.map((u: any) => (
                       <TableRow key={u.id}>
-                        <TableCell className="font-medium">{u.displayName || "N/A"}</TableCell>
+                        <TableCell className="font-medium">{u.display_name || "N/A"}</TableCell>
                         <TableCell>{u.email}</TableCell>
                         <TableCell>
-                          {u.isAdmin ? (
+                          {u.is_admin ? (
                             <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 flex items-center gap-1 w-fit border-amber-200">
                               <ShieldCheck className="h-3 w-3" /> Admin
                             </Badge>
