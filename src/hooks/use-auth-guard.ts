@@ -8,17 +8,17 @@ import { useUser } from '@/firebase';
 const PUBLIC_PATHS = ['/', '/login', '/signup', '/forgot-password', '/pricing'];
 
 export function useAuthGuard() {
-  const { user, loading } = useUser();
+  const { user, isUserLoading } = useUser();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (loading) {
+    if (isUserLoading) {
       return; // Do nothing while loading
     }
 
     if (!user && !PUBLIC_PATHS.includes(pathname)) {
       router.push('/login');
     }
-  }, [user, loading, router, pathname]);
+  }, [user, isUserLoading, router, pathname]);
 }

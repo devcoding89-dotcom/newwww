@@ -16,8 +16,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
-import { useAuth } from "@/firebase";
-import { resetPassword } from "@/lib/firebase/auth";
+import { resetPassword } from "@/lib/supabase/auth";
 import { AuthCard } from "./auth-card";
 import Link from "next/link";
 
@@ -29,7 +28,6 @@ type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 
 export function ForgotPasswordForm() {
   const { toast } = useToast();
-  const auth = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
@@ -39,24 +37,16 @@ export function ForgotPasswordForm() {
   });
 
   async function onSubmit(values: ForgotPasswordFormData) {
-    if (!auth) {
-      toast({
-        variant: "destructive",
-        title: "Authentication service not available.",
-      });
-      return;
-    }
 
     setIsLoading(true);
     try {
-      await resetPassword(auth, values.email);
+      await resetPassword(values.email);
       setIsSubmitted(true);
     } catch (error: any) {
-      const errorCode = error.code;
-      let errorMessage = "An unexpected error occurred. Please try again.";
-      if (errorCode === "auth/user-not-found") {
-        errorMessage = "No user found with this email address.";
-      }
+      const errorMessage =
+        typeof error?.message === "string"
+          ? error.message
+          : "An unexpected error occurred. Please try again.";
       toast({
         variant: "destructive",
         title: "Password Reset Failed",

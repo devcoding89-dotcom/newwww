@@ -2,8 +2,8 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useFirestore, useUser, useCollection, useDoc, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy, doc } from "firebase/firestore";
+import { useUser } from "@/lib/supabase/provider";
+import { useMemoSupabaseCollection, useMemoSupabaseDoc } from "@/hooks/use-memo-supabase";
 import PageHeader from "@/components/page-header";
 import { 
   Card, 
@@ -42,24 +42,24 @@ export default function CampaignReportPage() {
   const params = useParams();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const { user } = useUser();
-  const db = useFirestore();
 
-  const campaignRef = useMemoFirebase(() => {
-    if (!db || !user || !id) return null;
-    return doc(db, "users", user.uid, "campaigns", id);
-  }, [db, user, id]);
+  const campaignQuery = useMemoSupabaseDoc(() => {
+    if (!user || !id) return null;
+    return { tableName: "campaigns", id: id, filters: [{ column: "user_id", operator: "eq", value: user.id }] };
+  }, [user, id]);
 
-  const { data: campaign, loading: campaignLoading } = useDoc<Campaign>(campaignRef);
+  const { data: campaign, isLoading: campaignLoading } = campaignQuery;
 
-  const logsQuery = useMemoFirebase(() => {
-    if (!db || !user || !id) return null;
-    return query(
-      collection(db, "users", user.uid, "campaigns", id, "logs"),
-      orderBy("sentAt", "desc")
-    );
-  }, [db, user, id]);
+  const logsQuery = useMemoSupabaseCollection(() => {
+    if (!user || !id) return null;
+    return {
+      tableName: "campaign_logs",
+      filters: [{ column: "campaign_id", operator: "eq", value: id }],
+      orderBy: { column: "created_at", ascending: false }
+    };
+  }, [user, id]);
 
-  const { data: logs, loading: logsLoading } = useCollection<EmailLog>(logsQuery);
+  const { data: logs, isLoading: logsLoading } = logsQuery;
 
   if (campaignLoading || logsLoading) {
     return (
@@ -80,15 +80,15 @@ export default function CampaignReportPage() {
     );
   }
 
-  const successRate = campaign.totalCount 
-    ? Math.round((campaign.sentCount / campaign.totalCount) * 100) 
+  const successRate = (campaign.sent_count + campaign.failed_count) 
+    ? Math.round((campaign.sent_count / (campaign.sent_count + campaign.failed_count)) * 100) 
     : 0;
 
   return (
     <div className="container mx-auto py-8 max-w-6xl">
       <PageHeader
         title={campaign.name}
-        description={`Outreach Performance Report • Dispatched ${formatDistanceToNow(new Date(campaign.updatedAt))} ago`}
+        description={`Outreach Performance Report • Dispatched ${formatDistanceToNow(new Date(campaign.created_at))} ago`}
       >
         <Button variant="ghost" asChild size="sm">
           <Link href="/campaigns">
@@ -111,7 +111,7 @@ export default function CampaignReportPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription className="text-[10px] uppercase font-bold tracking-widest">Total Delivered</CardDescription>
-            <CardTitle className="text-3xl font-black">{campaign.sentCount}</CardTitle>
+            <CardTitle className="text-3xl font-black">{campaign.sent_count}</CardTitle>
           </CardHeader>
           <CardContent className="flex items-center gap-2 text-xs text-green-600 font-medium">
             <CheckCircle2 className="h-3 w-3" /> Successfully reached mailbox
@@ -120,7 +120,7 @@ export default function CampaignReportPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription className="text-[10px] uppercase font-bold tracking-widest">Failed/Bounced</CardDescription>
-            <CardTitle className="text-3xl font-black text-destructive">{campaign.failedCount}</CardTitle>
+            <CardTitle className="text-3xl font-black text-destructive">{campaign.failed_count}</CardTitle>
           </CardHeader>
           <CardContent className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
             <AlertCircle className="h-3 w-3" /> Blocked or invalid address
@@ -152,12 +152,12 @@ export default function CampaignReportPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {logs?.map((log) => (
+              {logs?.map((log: any) => (
                 <TableRow key={log.id}>
                   <TableCell>
                     <div className="flex flex-col">
-                      <span className="font-bold text-sm">{log.recipientName}</span>
-                      <span className="text-xs text-muted-foreground font-mono">{log.recipientEmail}</span>
+                      <span className="font-bold text-sm">{log.status}</span>
+                      <span className="text-xs text-muted-foreground font-mono">{log.message}</span>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -172,10 +172,10 @@ export default function CampaignReportPage() {
                     )}
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
-                    {new Date(log.sentAt).toLocaleTimeString()}
+                    {new Date(log.created_at).toLocaleTimeString()}
                   </TableCell>
                   <TableCell className="text-right text-[10px] font-medium text-muted-foreground italic">
-                    {log.error || "Mail accepted by server"}
+                    {log.message || "Mail accepted by server"}
                   </TableCell>
                 </TableRow>
               ))}

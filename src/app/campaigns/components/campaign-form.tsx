@@ -51,10 +51,9 @@ import {
   BarChart3
 } from "lucide-react";
 import Link from "next/link";
-import { useFirestore, useUser, useDoc, useMemoFirebase, useCollection } from "@/firebase";
-import { doc, setDoc, updateDoc, serverTimestamp, collection, query, orderBy, getDocs, where, writeBatch } from "firebase/firestore";
-import { errorEmitter } from "@/firebase/error-emitter";
-import { FirestorePermissionError } from "@/firebase/errors";
+import { useUser } from "@/lib/supabase/provider";
+import { useMemoSupabaseCollection, useMemoSupabaseDoc } from "@/hooks/use-memo-supabase";
+import { supabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 

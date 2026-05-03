@@ -4,7 +4,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/toaster";
-import { FirebaseClientProvider } from "@/firebase/client-provider";
+import { SupabaseProvider } from "@/lib/supabase/provider";
 import { AppShell } from "@/components/app-shell";
 import { LoadingProvider } from "@/hooks/use-global-loading";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -30,7 +30,7 @@ export default function RootLayout({
           inter.variable
         )}
       >
-        <FirebaseClientProvider>
+        <SupabaseProvider>
           <ThemeProvider
             attribute="class"
             defaultTheme="system"
@@ -42,7 +42,7 @@ export default function RootLayout({
               <Toaster />
             </LoadingProvider>
           </ThemeProvider>
-        </FirebaseClientProvider>
+        </SupabaseProvider>
       </body>
     </html>
   );

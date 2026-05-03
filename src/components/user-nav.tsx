@@ -11,8 +11,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useUser, useAuth } from '@/firebase';
-import { signOut } from '@/lib/firebase/auth';
+import { useUser } from '@/lib/supabase/provider';
+import { signOut } from '@/lib/supabase/auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { LogOut, User, Settings } from 'lucide-react';
@@ -20,18 +20,15 @@ import { useRouter } from 'next/navigation';
 import { ThemeToggle } from './theme-toggle';
 
 export function UserNav() {
-  const { user, loading } = useUser();
-  const auth = useAuth();
+  const { user, isLoading } = useUser();
   const router = useRouter();
 
   const handleSignOut = async () => {
-    if (auth) {
-      await signOut(auth);
-      router.push('/login');
-    }
+    await signOut();
+    router.push('/login');
   };
 
-  if (loading) {
+  if (isLoading) {
     return <Skeleton className="h-10 w-10 rounded-full" />;
   }
 

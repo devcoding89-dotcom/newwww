@@ -5,12 +5,12 @@ import { useRouter } from 'next/navigation';
 import { useUser } from '@/firebase';
 
 export function useRedirectIfAuthenticated(redirectPath: string = '/') {
-  const { user, loading } = useUser();
+  const { user, isUserLoading } = useUser();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!isUserLoading && user) {
       router.push(redirectPath);
     }
-  }, [user, loading, router, redirectPath]);
+  }, [user, isUserLoading, router, redirectPath]);
 }
