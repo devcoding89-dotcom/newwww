@@ -1,0 +1,162 @@
+
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Represents a user's public profile information and subscription status.",
+      "type": "object",
+      "properties": {
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "isAdmin": {
+          "type": "boolean",
+          "description": "Whether the user has administrative privileges."
+        },
+        "subscriptionTier": {
+          "type": "string",
+          "enum": ["free", "elite"],
+          "description": "The current billing plan of the user."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "displayName",
+        "email",
+        "subscriptionTier"
+      ]
+    },
+    "Template": {
+      "title": "Email Template",
+      "description": "A reusable email structure with subject and body.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "subject": { "type": "string" },
+        "body": { "type": "string" },
+        "category": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "subject", "body", "createdAt"]
+    },
+    "Parse": {
+      "title": "Email Parse Result",
+      "description": "Stores the result of an AI email extraction process.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "A user-defined title for this parse record."
+        },
+        "text": {
+          "type": "string",
+          "description": "The original raw text that was parsed."
+        },
+        "emails": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "email"
+          },
+          "description": "The list of unique emails extracted from the text."
+        },
+        "contacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "email": { "type": "string" },
+              "firstName": { "type": "string" },
+              "lastName": { "type": "string" },
+              "company": { "type": "string" },
+              "position": { "type": "string" }
+            }
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the extraction was performed."
+        }
+      },
+      "required": [
+        "text",
+        "emails",
+        "createdAt"
+      ]
+    },
+    "Campaign": {
+      "title": "Email Campaign",
+      "description": "Represents an email marketing campaign.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "internalNotes": { "type": "string" },
+        "subject": { "type": "string" },
+        "previewText": { "type": "string" },
+        "body": { "type": "string" },
+        "contactListId": { "type": "string" },
+        "status": { 
+          "type": "string", 
+          "enum": ["draft", "scheduled", "sending", "paused", "completed", "failed"] 
+        },
+        "sentCount": { "type": "number" },
+        "failedCount": { "type": "number" },
+        "totalCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "subject", "body", "status", "createdAt"]
+    }
+  },
+  "auth": {
+    "providers": [
+      "email-password",
+      "google.com"
+    ]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Stores user profile and subscription status."
+    },
+    "/users/{userId}/templates/{templateId}": {
+      "schema": {
+        "$ref": "#/entities/Template"
+      },
+      "description": "Stores reusable email templates."
+    },
+    "/users/{userId}/parses/{parseId}": {
+      "schema": {
+        "$ref": "#/entities/Parse"
+      },
+      "description": "Stores extraction results history."
+    },
+    "/users/{userId}/campaigns/{campaignId}": {
+      "schema": {
+        "$ref": "#/entities/Campaign"
+      },
+      "description": "Stores user campaigns."
+    },
+    "/users/{userId}/contactLists/{listId}": {
+      "schema": { "type": "object" },
+      "description": "Stores recipient contact lists."
+    },
+    "/users/{userId}/contacts/{contactId}": {
+      "schema": { "type": "object" },
+      "description": "Stores individual contact profiles."
+    }
+  }
+}
